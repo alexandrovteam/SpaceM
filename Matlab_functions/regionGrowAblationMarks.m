@@ -15,7 +15,7 @@ x = data(2, :) - min(data(2, :)) + window;
 initPos = round([y;x])';
 
 imshow(cIM, []); hold on;
-% range = getrangefromclass(cIM);
+range = getrangefromclass(cIM);
 % waitbar(0);
 
 for i = 1:numel(x)
@@ -30,9 +30,9 @@ for i = 1:20
     imCut = cIM(initPos(i,1)-25:initPos(i,1)+25, initPos(i,2)-25:initPos(i,2)+25);
     scatter(initPos(i,2),initPos(i,1), 40, 'g', 'fill'); hold on;
 % end
-%     thresh = graythresh(imCut);
-%     thresh_bw = thresh*range(2);
-%     thresh_bw = thresh_bw - thresh_bw*0.5;
+    thresh = graythresh(imCut);
+    thresh_bw = thresh*range(2);
+    thresh_bw = thresh_bw - thresh_bw*0.5;
     
     thresh_bw = mean(imCut(:)) - std(double(imCut(:)))/10 ;
     if thresh_bw < 0
@@ -47,7 +47,7 @@ for i = 1:20
         RGpos = [ind1 + initPos(i,1)-26, ind2 + initPos(i,2)-26];
         
         cIM(RGpos(1), RGpos(2));
-        [~, BW] = regionGrowing(cIM, RGpos, thresh_bw, 15);
+        [poly, BW] = regionGrowing(cIM, RGpos, thresh_bw, 15);
         [BWx,BWy] = ind2sub(size(cIM),find(BW>0));
         scatter(BWy, BWx, 20, 'b', 'fill')
         out(i).BWx = BWx +  min(data(1, :)) - window;

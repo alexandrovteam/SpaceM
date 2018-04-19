@@ -1,5 +1,5 @@
 function centroids = spotFinder2(path, layer)
-path = 'D:\Experiments\20171106_Hepa_Nov_DHB_10conditions\FT4\Analysis\gridFit\blue_window200.png';
+% path = 'D:\Experiments\20171106_Hepa_Nov_DHB_10conditions\FT4\Analysis\gridFit\blue_window200.png';
 % close('all');
 img_i = double(imread(path));
 % if numel(size(img_i)) > 2

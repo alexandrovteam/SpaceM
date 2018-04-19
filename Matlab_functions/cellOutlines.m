@@ -1,10 +1,10 @@
 function dummy = cellOutlines(FluoBrightfield_p, fluo_window, label_p, save_p)
 
-labelI = imread( label_p);%'D:\Experiments\Hepa_May\Analysis\il17a_slide4\Analysis\CellProfilerAnalysis\Labelled_cells.tif');
-fluoI = imread(FluoBrightfield_p);%'D:\Experiments\Hepa_May\Analysis\il17a_slide4\Analysis\ili\FLUO_crop_bin1x1.png');
-values = unique(labelI);
-perimAll = zeros(size(labelI));
-textprogressbar('Drawing cell outlines:     ');
+% labelI = imread( label_p);%'D:\Experiments\Hepa_May\Analysis\il17a_slide4\Analysis\CellProfilerAnalysis\Labelled_cells.tif');
+% fluoI = imread(FluoBrightfield_p);%'D:\Experiments\Hepa_May\Analysis\il17a_slide4\Analysis\ili\FLUO_crop_bin1x1.png');
+% values = unique(labelI);
+% perimAll = zeros(size(labelI));
+% textprogressbar('Drawing cell outlines:     ');
 
 for i = 2:numel(values)
     perim = bwperim(labelI == values(i));
