@@ -3,6 +3,7 @@ from matplotlib.patches import Rectangle
 import numpy as np
 import os
 from functools import reduce
+
 class Annotate(object):
     def __init__(self):
         self.ax = plt.gca()
@@ -33,8 +34,8 @@ class Annotate(object):
 #CHOOSE
 # MF = 'D:/Experiments/Hepa_June/LPS_1.1/'
 MFA = MF + 'Analysis/'
-Path = MFA + 'gridFit/ablation_marks_XY'
 
+Path = MFA + 'gridFit/ablation_marks_XY'
 Path = MFA + 'SURF/preXYsurf'
 Path = MFA + 'SURF/postXYsurf'
 

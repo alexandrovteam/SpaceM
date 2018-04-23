@@ -10,7 +10,7 @@ import numpy as np
 import os, gc, matlab.engine
 
 #Defines paths of main analysis directroy
-MF = 'E:/Experiments/20171106_Hepa_Nov/FT1/' #MF: Main Folder
+MF = 'E:/Experiments/manual_cleaning_demo/' #MF: Main Folder
 matrix = 'DHB' #or 'DAN'
 CDs = [0.75] #correlation distances
 
