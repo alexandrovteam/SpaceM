@@ -1,16 +1,16 @@
-import spaceM.ImageFileManipulation.FIJIcalls as fc
-import spaceM.ImageFileManipulation.manipulations as manip
-import spaceM.Registration.AblationMarkFinder as amf
-import spaceM.Registration.ImageRegistration as ir
-from spaceM import WriteILIinput
-import spaceM.scAnalysis.Segmentation as scSg
-import spaceM.scAnalysis.scAnalysis as scSc
-import spaceM.scAnalysis.manifoldAnalysis as scMa
+import SpaceM.ImageFileManipulation.FIJIcalls as fc
+import SpaceM.ImageFileManipulation.manipulations as manip
+import SpaceM.Registration.AblationMarkFinder as amf
+import SpaceM.Registration.ImageRegistration as ir
+from SpaceM import WriteILIinput
+import SpaceM.scAnalysis.Segmentation as scSg
+import SpaceM.scAnalysis.scAnalysis as scSc
+import SpaceM.scAnalysis.manifoldAnalysis as scMa
 import numpy as np
 import os, gc, matlab.engine
 
 #Defines paths of main analysis directroy
-MF = 'D:/Experiments/20171106_Hepa_Nov_DHB_10conditions\FT1/' #MF: Main Folder
+MF = 'E:/Experiments/20171106_Hepa_Nov/FT1/' #MF: Main Folder
 matrix = 'DHB' #or 'DAN'
 CDs = [0.75] #correlation distances
 

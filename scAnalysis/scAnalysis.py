@@ -14,18 +14,62 @@ import tqdm
 import codecs
 
 
-def defMOLfeatures(MF, tf_obj, CDs, norm_method, fetch_ann='offline', area_prop=0.3, tol_fact=-0.2, filter = 'correlation'):
-    """Dummy.
+def defMOLfeatures(MF,
+                   tf_obj=ion2fluoTF,
+                   CDs=[0.75],
+                   tol_fact=-0.2,
+                   filter = 'correlation',
+                   norm_method='weighted_mean_sampling_area_MarkCell_overlap_ratio_sampling_area',
+                   area_prop=0.3,
+                   fetch_ann='online',
+                   hdf5_path='C:/Users\Luca\Google Drive\A-Team\projects/1c\hepatocytes, '
+                             'DKFZ\datasets/Molecular images/2017-09-12-luca-mz-images.hdf5'):
+
+    """Defines molecular intensities of individual cells.
 
      Args:
-         MF (): .
-         tf_obj (): .
-         CDs (): .
-         norm_method (): .
-         fetch_ann (): .
-         area_prop (): .
-         tol_fact (): .
-         filter (): .
+         MF (str): path to the Main Folder.
+         tf_obj (function): Image transformation to apply on ion image for registration.
+         filter (str): filter strategy to select background and on-sample annotation images:
+            'mean': compare the mean ion intensity from off and on-sample pixels. Consider annotation as coming from
+                the sample if  mean on-sample intensity > tol_fact * mean off-sample intensity.
+            'correlation': compute the correlation distance between the intensity thresholded annotation image and
+                the cell distribution binary mask. The annotation is considered as coming from the sample if the
+                correlation distance is inferior to CDs[i]. The cell distribution mask has pixel equal to 1 if its
+                corresponding ablation mark is touching a cell and 0 if not. The treshold value to binarize the
+                annotation image is found using an optimizer which minimzes the correlation distance with the cell
+                distribution mask. This removes the negative effect that an uneven ion intensity distribution will
+                have on the correlation distance with the cell distribution mask.
+         tol_fact (float): tolerance factor to use for the filter 'mean'.
+         CDs (list): correlation distance tresholds used for filtering background annotation images, only used when
+            filter is 'correlation'. Default value is 0.75.
+         norm_method (str): normalization method to use:
+            'Mean_intensity': mean Intensity of AM touching the cell OI,
+            'weighted_mean_sampling_area_MarkCell_overlap_int_power1,7': mean Intensity of AM dvidied by its
+                sampling area weighted by the number of pixels of the AM sampling area touching the cell OI,
+            'weighted_mean_sampling_area_MarkCell_overlap_int': mean Intensity of AM dvidied by its sampling area
+                weighted by the number of pixels of the AM sampling area touching the cell OI,
+            'weighted_mean_sampling_area_MarkCell_overlap_ratio_sampling_area': (default) mean Intensity of AM dvidied
+                by its sampling area weighted by the ration between AM sampling area touching the cell OI and its
+                sampling area,
+            'squared_weighted_mean_sampling_area_MarkCell_overlap_ratio_sampling_area': mean Intensity of AM dvidied
+                by its sampling area weighted by the ration between AM sampling area touching the cell OI and its
+                sampling area,
+            'mean_sampling_ratio': mean Intensity of AM dvidied by the proportion of its area sampling a cell,
+            'mean_sampling_area': mean Intensity of AM dvidied by its sampling area in um.
+         area_prop (float): lower threshold value of overlap between an ablation marks and cell below which the
+            ablation mark are discarded.
+         fetch_ann (str): method for fetching annotations:
+            'online': (default) queries metaspace using the name of the .imzml data present in the MALDI input folder
+                as dataset name,
+            'offline': reads annotation images from a provided dataframe.
+         hdf5_path (str): path to the .hdf5 file containing the annotation images. Only used when fetch_ann='offline'.
+            The hdf file should be organized as follows:
+            {
+            'ds_name': dataset name (str),
+            'image': annotation image (2D array),
+            'mol_formula': MS1 sum formula (str) (example: C42H82NO6P)
+             }
 
      """
 
@@ -56,14 +100,14 @@ def defMOLfeatures(MF, tf_obj, CDs, norm_method, fetch_ann='offline', area_prop=
     window = 100
     coordX, coordY = np.load(MFA + 'SURF/transformedMarks.npy')
     os.chdir(MF + 'Input/MALDI/')
-    ds_name = glob.glob('*.imzML')[0].replace('.imzML', '')
+    # ds_name = glob.glob('*.imzML')[0].replace('.imzML', '')
     pixel_size = getPixSize(MF + 'Input/')
 
     Fname = MFA + 'scAnalysis/Molecular_features/'
     if not os.path.exists(Fname):
         os.makedirs(Fname)
     CD = CDs[0]
-    sm = smau.SMInstance()
+    # sm = smau.SMInstance()
     os.chdir(MF + 'Input/MALDI/')
     ds_name = glob.glob('*.imzML')[0].replace('.imzML', '')
 
@@ -192,52 +236,7 @@ def defMOLfeatures(MF, tf_obj, CDs, norm_method, fetch_ann='offline', area_prop=
             pmi = np.append(pmi, status)
             # mbi = np.append(mbi, np.mean(bi))
             overLaps = np.append(overLaps, cell_mark_OL)
-        # Loop over annotation image and create violin plots of ion int. vs binned fluo int.
-        # nbins = 15
-        # fluo_bins = np.histogram(fluo, nbins)[1]
-        # tree = spatial.KDTree(list(zip(np.zeros(np.shape(fluo_bins)).ravel(), fluo_bins.ravel())))
-        # for i, row in enumerate(results.reset_index().itertuples()):
-        #     images = d.isotope_images(row.sf, row.adduct)
-        #     an_vec255 = (np.fliplr(images[0]).ravel())
-        #     plot_data = {}
-        #     print(i)
-        #     for j in fluo_bins:
-        #         plot_data[str(j)] = []
-        #     for key, value in cell_marks.items():
-        #         if not np.shape(cell_fluo[key])[0] == 0:
-        #             dist, ind = tree.query(list(zip(np.zeros(np.shape(cell_fluo[key])).ravel(),cell_fluo[key])))
-        #             # plt.scatter(np.ones(np.shape(cell_fluo[key]))*fluo_bins[ind], an_vec255[[int(i) for i in cell_marks[key]]] )
-        #             plot_data[str(fluo_bins[ind][0])] = np.append(plot_data[str(fluo_bins[ind][0])], an_vec255[[int(i) for i in cell_marks[key]]])
-        #
-        #     keys =  plot_data.keys()
-        #     del_key = []
-        #     for key in keys:
-        #         if np.shape(plot_data[key])[0] == 0:
-        #             del_key = np.append(del_key, key)
-        #         elif np.mean(plot_data[key]) == 0:
-        #             del_key = np.append(del_key, key)
-        #     for key in del_key:
-        #         del plot_data[key]
-        #
-        #     pos = np.array([float(key) for key, value in plot_data.items()])
-        #     data = np.array([plot_data[key][plot_data[key] > 0] for key, value in plot_data.items()])
-        #     data_mean = np.array([np.mean(value) for key, value in plot_data.items()])
-        #     pear_score = pearsonr(pos[np.where(data_mean > 0)[0]], data_mean[np.where(data_mean > 0)[0]]) # Pearson correlation
-        #     plt.figure()
-        #     figManager = plt.get_current_fig_manager()
-        #     figManager.window.showMaximized()
-        #     vio_data = plt.violinplot(data, pos, widths=10,
-        #                           showmeans=True)
-        #     plt.ylabel('Ion intensity (A.U)', fontsize = 50)
-        #     plt.xlabel('Cell mean fluorescence intensity (A.U)', fontsize = 50)
-        #     # plt.yscale("log", nonposy='clip')
-        #     plt.title(row.sf + ' Pearson = ' + str(pear_score[0])[:6], fontsize = 50)
-        #     plt.savefig('C:/Users/Luca/Desktop/GM6/pearson=' + str(pear_score[0])[:6]
-        #                 + '_sf=' + row.sf + '.png', format='png', dpi=100)
-        #     plt.close('all')
 
-        # cohibin_img = d.isotope_images('C37H68O4', '+H')
-        # cohi_vec255 = (np.fliplr(cohibin_img[0]).ravel())
         np.save(Fname + 'marks_flitered_fluo.npy', [norm_MM, cell_marks, nucl_fluo, cell_fluo, marks_fluo, marks_cell_overlap,
                                                     mark_area, overlap_indices, marks_fluo_overlap, cell_area,
                                                     marks_cell_overlap_indexes, marks_cellLabels, marks_samplingArea, pmi, overLaps])
@@ -431,8 +430,7 @@ def defMOLfeatures(MF, tf_obj, CDs, norm_method, fetch_ann='offline', area_prop=
         if not os.path.exists(CD_fname):
             os.makedirs(CD_fname)
 
-        df_im0 = pd.read_hdf(
-            'C:/Users\Luca\Google Drive\A-Team\projects/1c\hepatocytes, DKFZ\datasets/Molecular images/2017-09-12-luca-mz-images.hdf5')
+        df_im0 = pd.read_hdf(hdf5_path)
         df_im = df_im0[df_im0['ds_name'] == ds_name]
 
         tsne_data = {}
@@ -634,10 +632,17 @@ def defMOLfeatures(MF, tf_obj, CDs, norm_method, fetch_ann='offline', area_prop=
             CD_fname + 'MOLonlyData.csv')
 
 def defMORPHfeatures(MF):
+    """Reads morphological features of interest from CellProfiler csv output, and save them as a a new csv.
+    Documentation of the quantified features:
     # Main page: http://cellprofiler.org/manuals/current/
     # http://cellprofiler.org/manuals/current/MeasureObjectSizeShape.html
     # http://cellprofiler.org/manuals/current/MeasureObjectIntensity.html
     # http://cellprofiler.org/manuals/current/MeasureObjectNeighbors.html
+
+    Args:
+        MF (str): path to Main Folder.
+
+    """
 
     MFA = MF + 'Analysis/'
     Fname = MFA + 'scAnalysis/Morphological_features/'
@@ -705,6 +710,31 @@ def defMORPHfeatures(MF):
     feat_df.set_index('ObjectNumber').to_csv(Fname + 'MORPHallData.csv')
 
 def mergeMORPHnMOL4cyt(MF, CDs, fetch_ann='offline',  tol_fact=0.2, filter = 'mean'):
+    """Merge molecular data from the cells analyzed with SpaceM with their morphological features measured
+    by CellProfiler. The matching is done using the values from Objectnumber'.
+
+    Args:
+        MF (str): path to Main Folder.
+        CDs (list): correlation distance tresholds used for filtering background annotation images, only used when
+            filter is 'correlation'. Default value is 0.75.
+        fetch_ann (str): method for fetching annotations:
+            'online': (default) queries metaspace using the name of the .imzml data present in the MALDI input folder
+                as dataset name,
+            'offline': reads annotation images from a provided dataframe..
+        tol_fact (int): tolerance factor to use for the filter 'mean'.
+        filter (str): filter strategy to select background and on-sample annotation images:
+            'mean': compare the mean ion intensity from off and on-sample pixels. Consider annotation as coming from
+                the sample if  mean on-sample intensity > tol_fact * mean off-sample intensity.
+            'correlation': compute the correlation distance between the intensity thresholded annotation image and
+                the cell distribution binary mask. The annotation is considered as coming from the sample if the
+                correlation distance is inferior to CDs[i]. The cell distribution mask has pixel equal to 1 if its
+                corresponding ablation mark is touching a cell and 0 if not. The treshold value to binarize the
+                annotation image is found using an optimizer which minimzes the correlation distance with the cell
+                distribution mask. This removes the negative effect that an uneven ion intensity distribution will
+                have on the correlation distance with the cell distribution mask.
+         tol_fact (float): tolerance factor to use for the filter 'mean'.
+
+    """
 
     if fetch_ann == 'online' and filter == 'correlation':
         MOLcsv_p = MF + 'Analysis/scAnalysis/Molecular_features/CD={}/MOLallData.csv'.format(CDs[0])
@@ -739,6 +769,28 @@ def mapAnn2microCells(MF, MFA, csv_p, tf_obj,
                       labelled_cells_path, ds_index=10, draw_AM=False,
                       coloring_field='NumberOfNeighbors',
                       clip_percentile=100, cmap=cm.jet, log10=False):
+    """Create an image using the label image from CellProfiler where cells are colored based on their intensity for a
+    given metabolite.
+
+    Args:
+        MF (str): path to the Main Folder.
+        MFA (str): path to the Main Folder Analysis.
+        csv_p (str): path to the csv containing the molecular and morphological features of the cells.
+        tf_obj (function): Image transformation to apply on ion image for registration.
+        labelled_cells_path (str): path to the label image from CellProfiler.
+        ds_index (int): index of the dataset. Stored in the csv under the field 'ds_index'.
+        draw_AM (bool): whether drawing the ablation marks colored with their metabolite intensity on top of the cells.
+        coloring_field (str): field from which the intensity will be used to color the cells/ablation marks.
+        clip_percentile (float): percentile value to clip the intensities (hot/cold spot removal). The data are clipped
+            in both direction using that value (ex: a clip_percentile values of 2.5 will result in 95% of the value range)
+        cmap (matplotlib.cm): colormap to use to color the cells.
+        log10 (bool): whether log10 transform the intensities from the csv.
+
+    Returns:
+        color_mask (array): the resulting labeled image in which each pixel from each cells have their corresponding
+            value from the given coloring_field (2D).
+
+    """
 
     data_i = pd.read_csv(csv_p, sep='\s*,\s*', header=0, encoding='ascii', engine='python')
     if log10:
@@ -793,7 +845,21 @@ def mapAnn2microCells(MF, MFA, csv_p, tf_obj,
 
     return color_mask[100:-100, 100:-100]
 
-def annotation2microscopyAblationMarks(MF, sf, adduct, ion_percentile, touch_cell_only, tf_obj):
+def annotation2microscopyAblationMarks(MF, sf, adduct, clip_percentile, touch_cell_only, tf_obj):
+    """Overlaps the segmented ablation marks on the merged fluorescence with bright microscopy and color them with their
+    corresponding metabolite intensity.
+
+    Args:
+        MF (str): path to the Main Folder.
+        sf (str): sum formula of the metabolite to use for coloring the ablation marks.
+        adduct (str): adduct to consider.
+        clip_percentile (float): percentile value to clip the intensities (hot/cold spot removal). The data are clipped
+            in both direction using that value (ex: a clip_percentile values of 2.5 will result in 95% of the value range).
+        touch_cell_only (bool): whether to show only the ablation marks which are touching the cells.
+        tf_obj (function): Image transformation to apply on ion image for registration.
+
+    """
+
 
     MFA = MF + 'Analysis/'
     img = plt.imread(MFA + 'CellProfilerAnalysis/Contour_cells_adjusted.png')
@@ -801,6 +867,8 @@ def annotation2microscopyAblationMarks(MF, sf, adduct, ion_percentile, touch_cel
     cellMask_bw = cellMask>0
     marksMask = np.load(MFA + 'SURF/transformedMarksMask.npy')
     coordX, coordY = np.load(MFA + 'SURF/transformedMarks.npy')
+
+
     sm = smau.SMInstance()
     os.chdir(MF + 'Input/MALDI/')
     ds_name = glob.glob('*.imzML')[0].replace('.imzML', '')
@@ -817,7 +885,7 @@ def annotation2microscopyAblationMarks(MF, sf, adduct, ion_percentile, touch_cel
     mng.window.state('zoomed')
     plt.imshow(img)
     # ax.grid(False)
-    dz = np.clip(ion_img,np.percentile(ion_img, ion_percentile), np.percentile(ion_img, 100-ion_percentile)).ravel()
+    dz = np.clip(ion_img, np.percentile(ion_img, clip_percentile), np.percentile(ion_img, 100 - clip_percentile)).ravel()
     colors = plt.cm.viridis((dz - dz.min()) / (dz.max() - dz.min()))
     plt.show()
     plt.pause(0.05)

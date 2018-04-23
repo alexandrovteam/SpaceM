@@ -8,6 +8,44 @@ import glob
 import re
 
 def tSNEgen(MF, CDs, tol_fact, filter, metric='chebyshev', fetch_ann='online', p=30, ea=12):
+    """Performs tSNE analysis on the molecular data collected using SpaceM.
+    The documentation page of the sklearn implementation of tSNE:
+    http://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html
+
+    Args:
+        MF (str): path to the Main Folder.
+        CDs (list): correlation distance tresholds used for filtering background annotation images, only used when
+            filter is 'correlation'. Default value is 0.75.
+        tol_fact (float): tolerance factor to use for the filter 'mean'.
+        filter (str): filter strategy to select background and on-sample annotation images:
+            'mean': compare the mean ion intensity from off and on-sample pixels. Consider annotation as coming from
+                the sample if  mean on-sample intensity > tol_fact * mean off-sample intensity.
+            'correlation': compute the correlation distance between the intensity thresholded annotation image and
+                the cell distribution binary mask. The annotation is considered as coming from the sample if the
+                correlation distance is inferior to CDs[i]. The cell distribution mask has pixel equal to 1 if its
+                corresponding ablation mark is touching a cell and 0 if not. The treshold value to binarize the
+                annotation image is found using an optimizer which minimzes the correlation distance with the cell
+                distribution mask. This removes the negative effect that an uneven ion intensity distribution will
+                have on the correlation distance with the cell distribution mask.
+        metric (str): The metric to use when calculating distance between instances in a feature array. Metric value
+            must be one of the options allowed by scipy.spatial.distance.pdist for its metric parameter, or a metric
+            listed in pairwise.PAIRWISE_DISTANCE_FUNCTIONS.
+        fetch_ann (str): method for fetching annotations:
+            'online': (default) queries metaspace using the name of the .imzml data present in the MALDI input folder
+                as dataset name,
+            'offline': reads annotation images from a provided dataframe.
+        p (float): perplexity value to use for the tSNE algorithm. The perplexity is related to the number of nearest
+            neighbors that is used in other manifold learning algorithms. Larger datasets usually require a larger
+            perplexity. Consider selecting a value between 5 and 50. The choice is not extremely critical since t-SNE
+            is quite insensitive to this parameter.
+        ea (float): early exaggeration value to use for the tSNE algorithm. Controls how tight natural clusters in the
+            original space are in the embedded space and how much space will be between them. For larger values,
+            the space between natural clusters will be larger in the embedded space. Again, the choice of this
+            parameter is not very critical. If the cost function increases during initial optimization, the early
+            exaggeration factor or the learning rate might be too high.
+
+    """
+
     if fetch_ann == 'online' and filter == 'correlation':
         MOLcsv_p = MF + 'Analysis/scAnalysis/Molecular_features/CD={}/MOLonlyData.csv'.format(CDs[0])
         MOLallcsv_p = MF + 'Analysis/scAnalysis/Molecular_features/CD={}/MOLallData.csv'.format(CDs[0])
@@ -59,6 +97,15 @@ def tSNEgen(MF, CDs, tol_fact, filter, metric='chebyshev', fetch_ann='online', p
     plt.close('all')
 
 def genCYTinput(MF):
+    """Generate csv input for the CYT MATLAB package. CYT is a graphical software package from Dana Pe’er lab at
+    Columbia University lab that combines multiple analysis and visualization tools, such as viSNE, Wanderlust and DREMI
+    Link: http://www.c2b2.columbia.edu/danapeerlab/html/cyt.html
+
+    Args:
+        MF (str): path to Main Folder.
+
+    """
+
     MFA = MF + 'Analysis/'
     os.chdir(MFA + 'tSNE/')
     MORPHnMOL_df = pd.read_csv(MFA + 'scAnalysis/MORPHnMOL.csv')
