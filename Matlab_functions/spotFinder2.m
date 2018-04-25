@@ -1,18 +1,18 @@
 function centroids = spotFinder2(path, layer)
-% path = 'D:\Experiments\20171106_Hepa_Nov_DHB_10conditions\FT4\Analysis\gridFit\blue_window200.png';
+path = 'E:\Experiments\TNFa_2.3_SELECTED\Analysis\StitchedMicroscopy\postMALDI_FLR\img_XY049.tif';
 % close('all');
 img_i = double(imread(path));
 % if numel(size(img_i)) > 2
 %     img_i = img_i(:,:,1);
 % end
-
-img = img_i(:,:,uint8(layer)).*-1;
+img=img_i;
+% img = img_i(:,:,uint8(layer)).*-1;
 img = (img - min(img(:))) ./ (max(img(:)) - min(img(:)));
 % figure; imshow(img , [])
 low_in = mean(img(:)) + 2*std(img(:)); 
 if low_in >=1, low_in = 0.8; end
 img_2 = imadjust(img, [low_in, 1]);
-figure(); imshow(img_2, [])
+% figure(); imshow(img_2, [])
 ff = fft2(img_2); % Take Fourier Transform 2D
 F1 = 20*log(abs(fftshift(ff)));
 % figure();
@@ -21,16 +21,17 @@ F1 = 20*log(abs(fftshift(ff)));
 
 %NEW APPROACH: 
 mask1 = (F1- imgaussfilt(F1, 15)); % Blur FT image and subtract it from the original: Highlights the peaks corresponding to high repetition
-mask1(mask1 < 0) = 0; %zoroes values inferior to zero
-% imshow(mask1, [])
-mask2 = imdilate(mask1>mean(mask1(:)) + 3.5*std(mask1(:)), strel('disk',2));
-% imshow(mask2)
-ff_masked = fftshift(mask2).*ff;
-F2 = 20*log(abs(fftshift(ff_masked)));
-% figure();
-% imagesc(F2)
+% imagesc(mask1)
 % colormap(bone)
 
+mask1(mask1 < 0) = 0; %zoroes values inferior to zero
+% imshow(mask1, [])
+mask2 = imdilate(mask1 > (mean(mask1(:)) + 3.5*std(mask1(:))) , strel('disk',2));
+% imshow(mask2)
+
+ff_masked = fftshift(mask2).*ff;
+F2 = 20*log(abs(fftshift(ff_masked)));
+% imshow(F2, [])
 % rec = real(ifft2()); %threshold it, dilate and mask the FT
 % imshow(rec, [])
 % 
@@ -71,7 +72,7 @@ BW_o = imopen(rec_bw, strel('disk', 3));
 
 s = regionprops(BW_o,'centroid');
 centroids = cat(1, s.Centroid);
-%     
+    
 % figure;
 % imshow(img_2, []); hold on;
 % if ~isempty(centroids)

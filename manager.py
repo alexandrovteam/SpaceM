@@ -1,16 +1,16 @@
-import SpaceM.ImageFileManipulation.FIJIcalls as fc
-import SpaceM.ImageFileManipulation.manipulations as manip
-import SpaceM.Registration.AblationMarkFinder as amf
-import SpaceM.Registration.ImageRegistration as ir
-from SpaceM import WriteILIinput
-import SpaceM.scAnalysis.Segmentation as scSg
-import SpaceM.scAnalysis.scAnalysis as scSc
-import SpaceM.scAnalysis.manifoldAnalysis as scMa
+import spaceM.ImageFileManipulation.FIJIcalls as fc
+import spaceM.ImageFileManipulation.manipulations as manip
+import spaceM.Registration.AblationMarkFinder as amf
+import spaceM.Registration.ImageRegistration as ir
+from spaceM import WriteILIinput
+import spaceM.scAnalysis.Segmentation as scSg
+import spaceM.scAnalysis.scAnalysis as scSc
+import spaceM.scAnalysis.manifoldAnalysis as scMa
 import numpy as np
 import os, gc, matlab.engine
 
 #Defines paths of main analysis directroy
-MF = 'E:/Experiments/manual_cleaning_demo/' #MF: Main Folder
+MF = 'E:/Experiments/TNFa_2.3_SELECTED/'#MF: Main Folder
 matrix = 'DHB' #or 'DAN'
 CDs = [0.75] #correlation distances
 
@@ -93,8 +93,8 @@ if not os.path.exists(MFA_gF + 'marks_check/'):
 manip.crop2coords(MFA + 'gridFit/xye_clean2.npy',
                              MFA_Spom + 'img_t1_z1_c1', MFA_gF + 'marks_check/PHASE_crop_bin1x1_window100.png', window = 100)
 #On second channel (in the case of DHB, autofluorescence is used to detect ablation marks)
-manip.crop2coords(MFA + 'gridFit/xye_clean2.npy',
-                             MFA_Spom + 'img_t1_z1_c3', MFA_gF + 'marks_check/FLUO_crop_bin1x1_window100.png', window = 100)
+# manip.crop2coords(MFA + 'gridFit/xye_clean2.npy',
+#                              MFA_Spom + 'img_t1_z1_c3', MFA_gF + 'marks_check/FLUO_crop_bin1x1_window100.png', window = 100)
 
 manip.crop2coords(MFA + 'gridFit/xye_clean2.npy',
                              MFA_Spom + 'img_t1_z1_c1', MFA_gF + 'marks_check/PHASE_crop_bin1x1.png', window = 0)

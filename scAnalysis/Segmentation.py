@@ -2,7 +2,7 @@ from subprocess import call
 
 def callCP(MFA):
     """Call CellProfiler (http://cellprofiler.org/) to perform cell segmentation. CellProfiler segmentation pipeline
-    is in the SpaceM folder with the '.cppipe' extension.
+    is in the spaceM folder with the '.cppipe' extension.
 
      Args:
          MFA (str): path to Main Folder Analysis.

@@ -8,7 +8,7 @@ import glob
 import re
 
 def tSNEgen(MF, CDs, tol_fact, filter, metric='chebyshev', fetch_ann='online', p=30, ea=12):
-    """Performs tSNE analysis on the molecular data collected using SpaceM.
+    """Performs tSNE analysis on the molecular data collected using spaceM.
     The documentation page of the sklearn implementation of tSNE:
     http://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html
 

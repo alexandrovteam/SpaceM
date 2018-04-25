@@ -15,7 +15,7 @@ import codecs
 
 
 def defMOLfeatures(MF,
-                   tf_obj=ion2fluoTF,
+                   tf_obj,
                    CDs=[0.75],
                    tol_fact=-0.2,
                    filter = 'correlation',
@@ -710,7 +710,7 @@ def defMORPHfeatures(MF):
     feat_df.set_index('ObjectNumber').to_csv(Fname + 'MORPHallData.csv')
 
 def mergeMORPHnMOL4cyt(MF, CDs, fetch_ann='offline',  tol_fact=0.2, filter = 'mean'):
-    """Merge molecular data from the cells analyzed with SpaceM with their morphological features measured
+    """Merge molecular data from the cells analyzed with spaceM with their morphological features measured
     by CellProfiler. The matching is done using the values from Objectnumber'.
 
     Args:

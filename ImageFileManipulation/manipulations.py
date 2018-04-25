@@ -43,7 +43,8 @@ def crop2coords(coords_p, img_p, save_p, window):
     X, Y = np.load(coords_p)
     X = [int(x) for x in X]
     Y = [int(y) for y in Y]
-    img = plt.imread(img_p)
+    # img = plt.imread(img_p)
+    img = tiff.imread(img_p)
     scipy.misc.imsave(save_p, img[np.min(X)-window:np.max(X)+window, np.min(Y)-window:np.max(Y)+window])
 
 def crop2coords4CP(coords_p, imgF_p, saveF_p, window):
