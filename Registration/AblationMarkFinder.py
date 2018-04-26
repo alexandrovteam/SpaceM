@@ -14,6 +14,8 @@ import tqdm
 import seaborn as sns
 from scipy import ndimage
 from skimage.measure import label, regionprops
+import spaceM.ImageFileManipulation.FIJIcalls as fc
+
 
 
 def spotFinder(path, layer=3):
@@ -46,7 +48,7 @@ def spotFinder(path, layer=3):
     # plt.imshow(mask2, cmap='gray')
 
     ff_masked = np.fft.fftshift(mask2)*ff
-    F2 = 20 * np.log10(abs(np.fft.fftshift(ff_masked))+1)
+    # F2 = 20 * np.log10(abs(np.fft.fftshift(ff_masked))+1)
     # plt.imshow(F2, cmap='gray')
 
     freq_up = 0.9
@@ -69,7 +71,7 @@ def spotFinder(path, layer=3):
     rec_bw = rec > np.mean(rec) + 2*np.std(rec)
     struct2 = ndimage.generate_binary_structure(2,3)
     rec_e = ndimage.binary_erosion(rec_bw, structure=struct2).astype(rec_bw.dtype)
-    rec_o = ndimage.binary_dilation(rec_bw, structure=struct2).astype(rec_bw.dtype)
+    rec_o = ndimage.binary_dilation(rec_e, structure=struct2).astype(rec_bw.dtype)
     # plt.imshow(rec_o)
 
     label_img = label(rec_o, connectivity=rec_o.ndim)
@@ -84,18 +86,17 @@ def spotFinder(path, layer=3):
 
     return centroids
 
-def MarkFinderFT(MFA, MFA_Spom, POST_picXcoord, POST_picYcoord, matrix):
+def MarkFinderFT(MF):
     """Find center of mass of ablation marks on individual tile images from postMALDI microscopy dataset.
-        The actual ablation mark detection is performed in MATLAB. This dependency will be removed in the future.
+
     Args:
-        MFA (str): path to Main Folder Analysis.
-        MFA_Spom (str): path to Main Folder Analysis postMALDI transformed tile images.
-        POST_picXcoord (arr): array of registered X coordinates of postMALDI tile images after stitching (1D).
-        POST_picYcoord (arr): array of registered Y coordinates of postMALDI tile images after stitching (1D).
-        matrix (str): matrix used for MALDI. Two profiles exists: either 'DHB' or 'DAN'.
+        MF (str): path to Main Folder.
 
     """
-    # eng = matlab.engine.start_matlab()
+    MFA = MF + 'Analysis/'
+    MFA_Spom = MFA + 'StitchedMicroscopy/postMALDI_FLR/'
+
+    [POST_picXcoord, POST_picYcoord] = fc.readTileConfReg(MFA_Spom)
     allxScaled = []
     allyScaled = []
     overlap_img = 0.10
@@ -128,7 +129,7 @@ def MarkFinderFT(MFA, MFA_Spom, POST_picXcoord, POST_picYcoord, matrix):
     # eng.quit()
 
 
-def GridFit(MFA, MFI, optimization=False, manual_cleaning=False, MarkFinderFT=False):
+def GridFit(MF, optimization=False, manual_cleaning=True, MarkFinderFT=True):
     """Fit a theoretical grid on the ablation marks coordinates to remove extra detections and re-index ablation marks
     uniformly.
 
@@ -562,6 +563,9 @@ def GridFit(MFA, MFI, optimization=False, manual_cleaning=False, MarkFinderFT=Fa
             plt.close('all')
         return affine_lat2
 
+
+    MFI = MF + 'Input/'
+    MFA = MF + 'Analysis/'
     dataPoints = np.load(MFA + 'gridFit/ablation_marks_XY.npy')
 
     if MarkFinderFT:
@@ -674,7 +678,7 @@ def GridFit(MFA, MFI, optimization=False, manual_cleaning=False, MarkFinderFT=Fa
 
 def regionGrowing(cIM, initPos, thresVal, maxDist):
 
-
+    regVal = cIM[initPos[0], initPos[1]]
 
 
 def regionGrowingAblationMarks():
@@ -695,7 +699,6 @@ def regionGrowingAblationMarks():
     # plt.imshow(im_cut, cmap='gray')
     thresh = np.percentile(im_cut, 90)
 
-
     posX, posY = np.where(im_cut > thresh)
     tree = spatial.KDTree(list(zip(posX.ravel(), posY.ravel())))
     pts = np.array([[50,50]])
@@ -705,7 +708,7 @@ def regionGrowingAblationMarks():
     plt.scatter(50, 50, 50, c=[0, 1, 0])
     plt.scatter(posY[ind], posX[ind], 50, c=[1, 0, 0])
 
-    region_growing(im_cut, [posY[ind][0], posX[ind][0]])
+    regionGrowing(im_cut, [posY[ind][0], posX[ind][0]])
 
 
 
@@ -719,7 +722,7 @@ def marksSegmentedMask(MFA):
     Args:
         MFA (str): path to Main Folder Analysis.
     """
-    eng = matlab.engine.start_matlab()
+    # eng = matlab.engine.start_matlab()
     window=100
     dummy = eng.regionGrowAblationMarks(MFA + 'gridFit/marks_check/PHASE_crop_bin1x1_window100.png',
                                             MFA + 'gridFit/xye_clean2.npy', window,

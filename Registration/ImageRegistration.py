@@ -8,21 +8,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tifffile as tiff
 import seaborn as sns
+import spaceM.ImageFileManipulation.FIJIcalls as fc
 
-def SURF(MFA, folder, picXcoord, picYcoord, prefix, int_treshold):
+def penMarksFeatures(MF, prefix, int_treshold):
     """Obtain coordinates of the pixels at the edge of the penmarks from the tile frames in both pre- and post-MALDI
     microscopy datasets using matlab implementation of the SURF algorithm.
 
     Args:
-        MFA (str): path to Main Folder Analysis.
-        folder (str): path to folder containing the tile frames.
-        picXcoord (array): registred tile images X coordinates.
-        picYcoord (array): registred tile images Y coordinates.
+        MF (str): path to Main Folder.
         prefix (str): either 'pre' or 'post' for pre- or post-MALDI dataset, respectively.
         int_treshold (float): if given, performs an intensity based threshold on the tile frames and run SURF algorithm
         on the resulting binary mask.
 
     """
+    folder = MF + 'Analysis/StitchedMicroscopy/' + prefix + 'MALDI_FLR/'
+    [picXcoord, picYcoord] = fc.readTileConfReg(folder)
     eng = matlab.engine.start_matlab()
     X = []
     Y = []
@@ -41,15 +41,15 @@ def SURF(MFA, folder, picXcoord, picYcoord, prefix, int_treshold):
                     Y = np.append(Y, yScaled)
             print(item)
     eng.quit()
-    np.save(MFA + 'SURF/' + prefix + 'XYsurf.npy', [X, Y])
+    np.save(MF + 'Analysis/Fiducials/' + prefix + 'XYpenmarks.npy', [X, Y])
 
     plt.figure()
     plt.scatter(X, Y, 1)
     plt.xlabel('X dimension', fontsize=20)
     plt.ylabel('Y dimension', fontsize=20)
-    plt.title('SURF detection ' + prefix +'MALDI', fontsize=25)
+    plt.title('Fiducials detection ' + prefix +'MALDI', fontsize=25)
     plt.axis('equal')
-    plt.savefig(MFA + 'SURF/' + prefix + 'CHECK.png', dpi = 500)
+    plt.savefig(MF + 'Analysis/Fiducials/' + prefix + 'CHECK.png', dpi = 500)
     plt.close('all')
 
 def transform(postX, postY, transX, transY, rot):
@@ -70,7 +70,7 @@ def transform(postX, postY, transX, transY, rot):
     transformed = tf.matrix_transform(np.transpose([postX, postY]), tform.params)
     return transformed
 
-def SURF_Alignment(MFA):
+def fiducialsAlignment(MFA):
     """Define the coordinate transform parameters leading to the optimal overlap between the pre and post-MALDI
     fiducials.
 
@@ -119,8 +119,8 @@ def SURF_Alignment(MFA):
         distances = np.array(get_distance(transformed[:, 0], transformed[:, 1], preX, preY, 1)[0])
         return np.mean(distances)
 
-    preX, preY = np.load(MFA + 'SURF/preXYsurf.npy')
-    postX, postY = np.load(MFA + 'SURF/postXYsurf.npy')
+    preX, preY = np.load(MFA + 'Fiducials/preXYpenmarks.npy')
+    postX, postY = np.load(MFA + 'Fiducials/postXYpenmarks.npy')
 
     n_features = 2000
     post_den = int(np.round(np.shape(postX)[0] / n_features))
@@ -166,13 +166,13 @@ def SURF_Alignment(MFA):
     #     # scale = minF.x[3]
     #     print('rot = 180 deg')
 
-    np.save(MFA + '/SURF/optimized_params.npy', [transX, transY, rot])
+    np.save(MFA + '/Fiducials/optimized_params.npy', [transX, transY, rot])
     transformed = transform(postX, postY, transX, transY, rot)
     plt.figure()
     plt.scatter(transformed[:, 0], transformed[:, 1],1)
     plt.scatter(preX, preY, 1, 'r')
     plt.axis('equal')
-    plt.savefig(MFA + '/SURF/surfRegResults.png', dpi = 500)
+    plt.savefig(MFA + '/Fiducials/surfRegResults.png', dpi = 500)
     plt.close('all')
 
 def TransformMarks(MFA):
@@ -185,17 +185,17 @@ def TransformMarks(MFA):
      """
     xe_clean2, ye_clean2 = np.load(MFA + '/gridFit/xye_clean2.npy')
     x_spots, y_spots = np.load(MFA + '/gridFit/xye_grid.npy')
-    transX, transY, rot = np.load(MFA + '/SURF/optimized_params.npy')
+    transX, transY, rot = np.load(MFA + '/Fiducials/optimized_params.npy')
     scale = 1
     shape, pix_size = np.load(MFA + '/gridFit/metadata.npy')
     xye_tf = transform(xe_clean2, ye_clean2, transX, transY, rot)
     X = xye_tf[:, 0]
     Y = xye_tf[:, 1]
-    np.save(MFA + '/SURF/transformedMarks.npy', [X, Y])
+    np.save(MFA + '/Fiducials/transformedMarks.npy', [X, Y])
     xyg_tf = transform(x_spots.ravel(), y_spots.ravel(), transX, transY, rot)
     Xg = xyg_tf[:, 0]
     Yg = xyg_tf[:, 1]
-    np.save(MFA + '/SURF/transformedGrid.npy', [Xg, Yg])
+    np.save(MFA + '/Fiducials/transformedGrid.npy', [Xg, Yg])
 
     if os.path.exists(MFA + 'gridFit/marksMask.npy'):
         marksMask = np.load(MFA + 'gridFit/marksMask.npy')
@@ -207,4 +207,4 @@ def TransformMarks(MFA):
             else:
                 tfMarksMask.append([[], []])
                 print('empty')
-        np.save(MFA + '/SURF/transformedMarksMask.npy', tfMarksMask)
+        np.save(MFA + '/Fiducials/transformedMarksMask.npy', tfMarksMask)

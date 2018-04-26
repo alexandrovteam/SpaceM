@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import scipy.misc
 import tqdm
 
-def PixFliplr(file_path, MFAspm):
+def PixFliplr(tf, file_path, MFAspm):
     """Transform images before stitching. This transformation depends on the microscope, the software and the canera used.
 
     Args:
@@ -27,12 +27,12 @@ def PixFliplr(file_path, MFAspm):
             if np.shape(a.shape)[0] == 2:
                 b = np.zeros((np.max(a.shape), np.max(a.shape)),
                              dtype=np.uint16)  # lazy hack --> restricts to squared images
-                b[:, :] = np.fliplr(a[:, :])
+                b[:, :] = tf(a[:, :])
             else:
                 n_chan = a.shape[0]
                 b = np.zeros((n_chan, np.max(a.shape), np.max(a.shape)), dtype=np.uint16) # lazy hack --> restricts to squared images
                 for i in range(n_chan):
-                    b[i, :, :] = np.fliplr(a[i, :, :])
+                    b[i, :, :] = tf(a[i, :, :])
             tiff.imsave(MFAspm + item, b)
             tif_files.append(item)
             # print('Processed Image # {}'.format(ind))

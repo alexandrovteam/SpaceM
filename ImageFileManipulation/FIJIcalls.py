@@ -1,9 +1,15 @@
+import spaceM
 import os
 import codecs
 import numpy as np
 from subprocess import call
 import math
+import pandas as pd
 
+
+def getFIJIpath():
+    return pd.read_json(os.path.dirname(spaceM.__file__) + '\\paths.json')['Fiji path'].as_matrix()[0]
+fiji_path = pd.read_json(os.path.dirname(spaceM.__file__) + '\\paths.json')['Fiji path'].as_matrix()[0]
 def TileConfFormat(path, dir_fliplr, tif_files):
     """Extract the microscope motor stage coordinates at each frame from the metadata text file from the Nikon
     Ti-E microscope (NIS elements software) and reformat into readable format for the Priebisch software algorithm
@@ -16,9 +22,9 @@ def TileConfFormat(path, dir_fliplr, tif_files):
 
     """
     if 'out.txt' in os.listdir(path):
-        txt_file = codecs.open(path + 'out.txt', 'r','utf-16')
+        txt_file = codecs.open(path + 'out.txt', 'r', 'utf-16')
         data = []
-        out_file = open(dir_fliplr + 'TileConfiguration.txt','w')
+        out_file = open(dir_fliplr + 'TileConfiguration.txt', 'w')
         out_file.write('# Define the number of dimensions we are working on\ndim = 2\n\n# Define the image coordinates\n')
         i = 0
         for row in txt_file:
@@ -65,7 +71,7 @@ def callFIJImergeRedGray(base_path, red_filename, gray_filename,
         out_file2.close()
 
         os.rename(script_file_p, base + ".ijm")
-    call(['C:\\Users\Luca\Documents\Fiji.app\ImageJ-win64.old.exe', '-macro', base.replace('/', '\\') + ".ijm"])#, stdout = PIPE)
+    call([getFIJIpath(), '-macro', base.replace('/', '\\') + ".ijm"])#, stdout = PIPE)
 
 def callFIJImergeGrayRedBlue(base_path, red_filename, gray_filename, blue_filename,
                          save_filename):
@@ -100,7 +106,7 @@ def callFIJImergeGrayRedBlue(base_path, red_filename, gray_filename, blue_filena
         out_file2.close()
 
         os.rename(script_file_p, base + ".ijm")
-    call(['C:\\Users\Luca\Documents\Fiji.app\ImageJ-win64.old.exe', '-macro', base.replace('/', '\\') + ".ijm"])#, stdout = PIPE)
+    call([getFIJIpath(), '-macro', base.replace('/', '\\') + ".ijm"])#, stdout = PIPE)
 
 def callFIJIstitch(dir_fliplr):
     """Calls FIJI stitching algorithm on the transformed tiled frames using the reformatted metadata text file.
@@ -124,7 +130,7 @@ def callFIJIstitch(dir_fliplr):
     out_file2.close()
     base = os.path.splitext(script_file_p)[0]
     os.rename(script_file_p, base + ".ijm")
-    call(['C:\\Users\Luca\Documents\Fiji.app\ImageJ-win64.old.exe', '-macro', base.replace('/', '\\') + ".ijm"])#, stdout = PIPE)
+    call([fiji_path, '-macro', base.replace('/', '\\') + ".ijm"])#, stdout = PIPE)
     # os.remove('C:\\Users\Luca\AppData\Local\Temp\org.scijava.jython.shaded.jline_2_5_3.dll')
 
 def readTileConfReg(dir_fliplr):
@@ -186,7 +192,7 @@ def imbin4ili(file_p, maxsize):
         out_file2.close()
         base = os.path.splitext(script_file_p)[0]
         os.rename(script_file_p, base + ".ijm")
-        call(['C:\\Users\Luca\Documents\Fiji.app\ImageJ-win64.exe', '-macro',
+        call([getFIJIpath(), '-macro',
               base.replace('/', '\\') + ".ijm"])  # , stdout = PIPE)
     else: bin = 1
     return bin
