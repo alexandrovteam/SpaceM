@@ -5,7 +5,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import glob
-import re
 
 def tSNEgen(MF, CDs, tol_fact, filter, metric='chebyshev', fetch_ann='online', p=30, ea=12):
     """Performs tSNE analysis on the molecular data collected using spaceM.

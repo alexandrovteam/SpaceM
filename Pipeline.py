@@ -1,12 +1,32 @@
 import spaceM
-import numpy as np
 import pandas as pd
-import os, gc, matlab.engine
+import os, gc
 
-def getPaths():
-    return pd.read_json(os.path.dirname(spaceM.__file__) + '/paths.json')
+def getPath(field):
+    return pd.read_json(os.path.dirname(spaceM.__file__) + '\\paths.json')[field].as_matrix()[0]
 
-def stitchMicroscopy(tf, preMALDI=True, postMALDI=True, composite=False):
+def stitchMicroscopy(MF,
+                     merge_colors,
+                     merge_filenames,
+                     tf,
+                     preMALDI=True,
+                     postMALDI=True,
+                     ):
+
+    """Function to stitch tile microscopy images into a single one. The function first applies a transformation (tf) on
+        each tile images prior to stitching. It also merges defined fields of stitched images together into an RGB .png
+        file.
+    Args:
+        MF (str): path to the Main Folder.
+        merge_colors (list): list of string of color names: 'red', 'green', 'blue', 'gray', 'cyan', 'magenta', 'yellow'.
+        merge_filenames (list): list of string of image files names to merge. Their sequence in the list should match their
+            respective color in the 'colors' argument. After stitching they should start with 'img_t1_z1_c ... '.
+        tf (fun): image transformation to apply to the tile images prior to stitching.
+        preMALDI (bool): whether or not stithcing preMALDI dataset.
+        postMALDI (bool): whether or not stithcing postMALDI dataset.
+
+    Data are stored in MF + /Analysis/StitchedMicroscopy/
+    """
 
     if not os.path.exists(MF + 'Analysis/'):
         os.makedirs(MF + 'Analysis/')
@@ -44,29 +64,53 @@ def stitchMicroscopy(tf, preMALDI=True, postMALDI=True, composite=False):
         spaceM.ImageFileManipulation.FIJIcalls.callFIJIstitch(MF + 'Analysis/StitchedMicroscopy/postMALDI_FLR/')
         print('Pre-MALDI Stitching finished')
 
-    if composite:
-        spaceM.ImageFileManipulation.FIJIcalls.callFIJImergeRedGray(
-            base_path=MF + 'Analysis/StitchedMicroscopy/preMALDI_FLR/',
-            red_filename='img_t1_z1_c2',
-            gray_filename='img_t1_z1_c1',
-            save_filename='Composite.png')
 
-def ablationMarksFinder():
+    spaceM.ImageFileManipulation.FIJIcalls.callFIJImergeChannels(
+        base_path=MF + 'Analysis/StitchedMicroscopy/preMALDI_FLR/',
+        colors=merge_colors,
+        filenames=merge_filenames,
+        save_filename='Composite.png')
+
+def ablationMarksFinder(MF):
+    """Find the ablation marks on the tile images.
+    Args:
+        MF (str): path to the Main Folder.
+
+    Data are stored in MF + /Analysis/gridFit/
+    """
 
     if not os.path.exists(MF + 'Analysis/gridFit/'):
         os.makedirs(MF + 'Analysis/gridFit/')
 
     spaceM.Registration.AblationMarkFinder.MarkFinderFT(MF)
 
-def fiducialsFinder():
+def fiducialsFinder(MF):
+    """Find the fiducials coordinates on the stitched images.
+    Args:
+        MF (str): path to the Main Folder.
+
+    Data are stored in MF + /Analysis/Fiducials/
+    """
 
     if not os.path.exists(MF + 'Analysis/Fiducials/'):
         os.makedirs(MF + 'Analysis/Fiducials/')
 
-    spaceM.Registration.ImageRegistration.penMarksFeatures(MF,  prefix='post', int_treshold=[])
-    spaceM.Registration.ImageRegistration.penMarksFeatures(MF,  prefix='pre' , int_treshold=[])
+    spaceM.Registration.ImageRegistration.penMarksFeatures(MF,  prefix='post')
+    spaceM.Registration.ImageRegistration.penMarksFeatures(MF,  prefix='pre')
 
-def ablationMarksFilter(marks_check=True):
+def ablationMarksFilter(MF, marks_check=True):
+    """Filters ablation marks. First by re-running the ablation mark detection on the cropped stitched images where the
+    ablation marks are. Then by fitting a theoretical grid on the detections and taking only teh closest detection to
+    each grid node. This filters out double detections and re-orders the remaning ones into a uniform index which matches
+    later on the index of the ion image. The detections after filtering can be visualized in 'ili (https://ili.embl.de/).
+
+    Args:
+        MF (str): path to the Main Folder.
+        marks_check (bool): whether or not show the results.
+
+    Data are stored in MF + /Analysis/gridFit/
+    Visualization are stored in MF + /Analysis/gridFit/marks_check/
+    """
 
     spaceM.Registration.AblationMarkFinder.GridFit(MF)
 
@@ -107,14 +151,14 @@ def ablationMarksFilter(marks_check=True):
             path=MF + 'Analysis/gridFit/marks_check/ablation_marks_checkTHEORETICAL.csv',
             data=predata)
 
-def registration(ili_only=False):
+def registration(MF, tf_obj, ili_only=False, ili_fdr=0.2):
 
     if not os.path.exists(MF + 'Analysis/Fiducials/optimized_params.npy'):
         spaceM.Registration.ImageRegistration.fiducialsAlignment(MF + 'Analysis/')
 
-    if ili_only==True:
+    if ili_only==False:
         if not os.path.exists(MF + 'Analysis/Fiducials/transformedMarksMask.npy'):
-            spaceM.Registration.AblationMarkFinder.marksSegmentedMask(MF + 'Analysis/')
+            spaceM.Registration.AblationMarkFinder.regionGrowingAblationMarks(MF + 'Analysis/')
 
     if not os.path.exists(MF + 'Analysis/Fiducials/transformedMarksMask.npy'):
         spaceM.Registration.ImageRegistration.TransformMarks(MF + 'Analysis/')
@@ -122,27 +166,32 @@ def registration(ili_only=False):
     if not os.path.exists(MF + 'Analysis/ili/'):
         os.makedirs(MF + 'Analysis/ili/')
 
-    spaceM.ImageFileManipulation.manipulations.crop2coords(
-        MF + 'Analysis/Fiducials/transformedMarks.npy',
-        MF + 'Analysis/StitchedMicroscopy/preMALDI_FLR/Composite.png',
-        MF + 'Analysis/ili/FLUO_crop_bin1x1.png',
-                      window=0)
-    spaceM.ImageFileManipulation.manipulations.crop2coords(
-        MF + 'Analysis/Fiducials/transformedMarks.npy',
-        MF + 'Analysis/StitchedMicroscopy/preMALDI_FLR/Composite.png',
-        MF + 'Analysis/ili/FLUO_crop_bin1x1_window100.png',
-                      window=100)
-    gc.collect()
+    if not os.path.exists(MF + 'Analysis/ili/FLUO_crop_bin1x1.png'):
+        spaceM.ImageFileManipulation.manipulations.crop2coords(
+            MF + 'Analysis/Fiducials/transformedMarks.npy',
+            MF + 'Analysis/StitchedMicroscopy/preMALDI_FLR/Composite.png',
+            MF + 'Analysis/ili/FLUO_crop_bin1x1.png',
+                          window=0)
+        spaceM.ImageFileManipulation.manipulations.crop2coords(
+            MF + 'Analysis/Fiducials/transformedMarks.npy',
+            MF + 'Analysis/StitchedMicroscopy/preMALDI_FLR/Composite.png',
+            MF + 'Analysis/ili/FLUO_crop_bin1x1_window100.png',
+                          window=100)
+        gc.collect()
+
     nbin = spaceM.ImageFileManipulation.FIJIcalls.imbin4ili(MF + 'Analysis/ili/FLUO_crop_bin1x1.png', maxsize=50e6)
     spaceM.WriteILIinput.annotationSM2CSV(
         MF + 'Analysis/',
         MF + 'Input/',
-        fdr=0.5,
+        fdr=ili_fdr,
         nbin=nbin,
         radius=20,
-        tf_obj=ion2fluoTF)
+        tf_obj=tf_obj)
 
-def cellSegmentation():
+def cellSegmentation(MF,
+                     merge_colors,
+                     merge_filenames
+                     ):
 
     if not os.path.exists(MF + 'Analysis/CellProfilerAnalysis/'):
         os.makedirs(MF + 'Analysis/CellProfilerAnalysis/')
@@ -153,29 +202,28 @@ def cellSegmentation():
         MF + 'Analysis/StitchedMicroscopy/preMALDI_FLR/',
         MF + 'Analysis/CellProfilerAnalysis/',
         window=CP_window)
-    spaceM.ImageFileManipulation.FIJIcalls.callFIJImergeRedGray(
+    spaceM.ImageFileManipulation.FIJIcalls.callFIJImergeChannels(
         base_path=MF + 'Analysis/CellProfilerAnalysis/',
-        red_filename='img_t1_z1_c2.tif',
-        gray_filename='img_t1_z1_c1.tif',
+        colors=merge_colors,
+        filenames=merge_filenames,
         save_filename='Composite_window100_adjusted.png')
     gc.collect()
 
-    eng = matlab.engine.start_matlab()
-    dummy = eng.imAdjQuantiles(0.01,
-                               MF + 'Analysis/CellProfilerAnalysis/img_t1_z1_c2.tif',
-                               MF + 'Analysis/CellProfilerAnalysis/img_t1_z1_c2_adjusted.tif')
-
+    spaceM.ImageFileManipulation.manipulations.imAdjQuantiles(pc=0.01,
+                                                              im_p=MF + 'Analysis/CellProfilerAnalysis/img_t1_z1_c2.tif',
+                                                              adj_p=MF + 'Analysis/CellProfilerAnalysis/img_t1_z1_c2_adjusted.tif')
     print('Start CellProfiler Anlalysis')
-    spaceM.scAnalysis.Segmentation.callCP(MF + 'Analysis/')
+    cp_p = getPath('CellProfiler path')
+    cppipe_p = getPath('CellProfiler pipeline path')
+    spaceM.scAnalysis.Segmentation.callCP(MF + 'Analysis/', cp_p, cppipe_p)
     print('Finished CellProfiler Anlalysis')
 
-    dummy = eng.cellOutlines(MF + 'Analysis/CellProfilerAnalysis/Composite_window100_adjusted.png',
+    spaceM.scAnalysis.Segmentation.cellOutlines(MF + 'Analysis/CellProfilerAnalysis/Composite_window100_adjusted.png',
                              CP_window,
                              MF + 'Analysis/CellProfilerAnalysis/Labelled_cells.tif',
                              MF + 'Analysis/CellProfilerAnalysis/Contour_cells_adjusted.png')
-    eng.quit()
 
-def spatioMolecularMatrix(CDs=[0.75]):
+def spatioMolecularMatrix(MF, tf_obj, CDs=[0.75]):
 
     if not os.path.exists(MF + 'Analysis/scAnalysis/'):
         os.makedirs(MF + 'Analysis/scAnalysis/')
@@ -187,7 +235,7 @@ def spatioMolecularMatrix(CDs=[0.75]):
 
     spaceM.scAnalysis.scAnalysis.defMOLfeatures(
         MF,
-        tf_obj=ion2fluoTF,
+        tf_obj=tf_obj,
         CDs=CDs,
         norm_method='weighted_mean_sampling_area_MarkCell_overlap_ratio_sampling_area',
         fetch_ann=fetch_ann, tol_fact=tol_fact, filter=filter)
@@ -198,31 +246,3 @@ def spatioMolecularMatrix(CDs=[0.75]):
         fetch_ann=fetch_ann,
         tol_fact=tol_fact,
         filter=filter)
-
-def ion2fluoTF(ion_img):
-    """Image transformation to apply on ion image for registration.
-
-    Args:
-        ion_img (ndarray): the ion image to transform (2D).
-
-    Returns:
-        out (array): the transformed ion image.
-
-    """
-    # return ion_img.T  # --> TF1 HepaJune dataset batches FASTER
-    # return np.fliplr(ion_img) #--> TF2 HepaJune dataset batch
-    return np.flipud(ion_img)  # --> TF for HepaNov17
-
-def img_tf(img):
-    # return img #20171206_CoCulture
-    return np.fliplr(img) #20171106_Hepa_Nov, 20170622_Hepa_June_DAN_Untreated_FA_LPS_TNFa
-
-MF = getPaths()['MF'].as_matrix()[0]
-stitchMicroscopy(tf=img_tf, postMALDI=False)
-# ablationMarksFinder()
-# fiducialsFinder()
-# #Run GUI to curate ablation marks and fiducials
-# ablationMarksFilter()
-# registration()
-# cellSegmentation()
-# spatioMolecularMatrix()

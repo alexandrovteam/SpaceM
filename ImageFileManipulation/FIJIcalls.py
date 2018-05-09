@@ -6,10 +6,8 @@ from subprocess import call
 import math
 import pandas as pd
 
-
-def getFIJIpath():
-    return pd.read_json(os.path.dirname(spaceM.__file__) + '\\paths.json')['Fiji path'].as_matrix()[0]
 fiji_path = pd.read_json(os.path.dirname(spaceM.__file__) + '\\paths.json')['Fiji path'].as_matrix()[0]
+
 def TileConfFormat(path, dir_fliplr, tif_files):
     """Extract the microscope motor stage coordinates at each frame from the metadata text file from the Nikon
     Ti-E microscope (NIS elements software) and reformat into readable format for the Priebisch software algorithm
@@ -42,71 +40,60 @@ def TileConfFormat(path, dir_fliplr, tif_files):
                 break
         out_file.close()
 
-def callFIJImergeRedGray(base_path, red_filename, gray_filename,
-                         save_filename):
-    """Creates a FIJI macro and call FIJI executable to merge two channels (brighfield and Red) stored in independent files.
+def callFIJImergeChannels(base_path,
+                          colors,
+                          filenames,
+                          save_filename = 'Composite.png'):
+
+    """Creates a FIJI macro and call FIJI executable to merge different channels stored in independent files into an RGB
+    image (.png).
 
     Args:
-        base_path (str): path of the directory containing the two images to merge.
-        red_filename (str): name of the image file for red channel.
-        gray_filename (str): name of the image file for gray channel.
-        save_filename (str): name of the merged image containing both chanel. Saved as an RGB image
+        base_path (str): path of the directory containing the images to merge.
+        colors (list): list of string of color names: 'red', 'green', 'blue', 'gray', 'cyan', 'magenta', 'yellow'.
+        filename (str): list of string of image files names to merge. Their sequence in the list should match their
+            respective color in the 'colors' argument.
+        save_filename (str): name of the merged image containing all chanels. Saved as an RGB image
 
     """
+
+    color_codex = {'red': 'c1',
+                   'green': 'c2',
+                   'blue': 'c3',
+                   'gray': 'c4',
+                   'cyan': 'c5',
+                   'magenta': 'c6',
+                   'yellow': 'c7'}
+
+    string1 = ''
+    for i in range(len(filenames)):
+        string1 = string1 + 'open("{}")\n'.format(
+            base_path.replace('/', '\\\\') + filenames[i]
+        )
+
+    string2 = ''
+    for i in range(len(colors)):
+        string2 = string2 + '{}={} '.format(
+            color_codex[colors[i]],
+            filenames[i])
+    string2 = string2 + 'create'
+
     script_file_p = base_path + 'mergeRedGray_script.txt'
     base = os.path.splitext(script_file_p)[0]
+
     if not os.path.exists(base_path + 'mergeRedGray_script.ijm' ):
         out_file2 = open(script_file_p , 'w')
-        out_file2.write('\
-        open("{}")\
-        \nopen("{}")\
-        \nrun("Merge Channels...", "c1={} c4={} create")\
+        out_file2.write(string1 + 'run("Merge Channels...", "{}")\
         \nsaveAs("PNG", "{}");\
         \nrun("Quit");'\
-                        .format(base_path.replace('/', '\\\\') + red_filename,
-                                base_path.replace('/', '\\\\') + gray_filename,
-                                red_filename,
-                                gray_filename,
+                        .format(string2,
                                 base_path.replace('/', '\\\\') + save_filename))
         out_file2.close()
 
+        if os.path.exists(base + ".ijm"):
+            os.remove(base + ".ijm")
         os.rename(script_file_p, base + ".ijm")
-    call([getFIJIpath(), '-macro', base.replace('/', '\\') + ".ijm"])#, stdout = PIPE)
-
-def callFIJImergeGrayRedBlue(base_path, red_filename, gray_filename, blue_filename,
-                         save_filename):
-    """Creates a FIJI macro and call FIJI executable to merge three channels (brighfield, red and blue) stored in independent files.
-
-    Args:
-        base_path (str): path of the directory containing the two images to merge.
-        red_filename (str): name of the image file for red channel.
-        gray_filename (str): name of the image file for gray channel.
-        blue_filename (str): name of the image file for blue channel.
-        save_filename (str): name of the merged image containing both chanel. Saved as an RGB image
-
-    """
-    script_file_p = base_path + 'mergeRedGrayBlue_script.txt'
-    base = os.path.splitext(script_file_p)[0]
-    if not os.path.exists(base_path + 'mergeRedGrayBlue_script.ijm' ):
-        out_file2 = open(script_file_p , 'w')
-        out_file2.write('\
-        open("{}")\
-        \nopen("{}")\
-        \nopen("{}")\
-        \nrun("Merge Channels...", "c1={} c4={} c3={} create")\
-        \nsaveAs("PNG", "{}");\
-        \nrun("Quit");'\
-                        .format(base_path.replace('/', '\\\\') + red_filename,
-                                base_path.replace('/', '\\\\') + gray_filename,
-                                base_path.replace('/', '\\\\') + blue_filename,
-                                red_filename,
-                                gray_filename,
-                                blue_filename,
-                                base_path.replace('/', '\\\\') + save_filename))
-        out_file2.close()
-
-        os.rename(script_file_p, base + ".ijm")
-    call([getFIJIpath(), '-macro', base.replace('/', '\\') + ".ijm"])#, stdout = PIPE)
+    call([fiji_path, '-macro', base.replace('/', '\\') + ".ijm"])#, stdout = PIPE)
 
 def callFIJIstitch(dir_fliplr):
     """Calls FIJI stitching algorithm on the transformed tiled frames using the reformatted metadata text file.
@@ -129,6 +116,8 @@ def callFIJIstitch(dir_fliplr):
                             dir_fliplr.replace('/', '\\\\')))
     out_file2.close()
     base = os.path.splitext(script_file_p)[0]
+    if os.path.exists(base + ".ijm"):
+        os.remove(base + ".ijm")
     os.rename(script_file_p, base + ".ijm")
     call([fiji_path, '-macro', base.replace('/', '\\') + ".ijm"])#, stdout = PIPE)
     # os.remove('C:\\Users\Luca\AppData\Local\Temp\org.scijava.jython.shaded.jline_2_5_3.dll')
@@ -192,7 +181,7 @@ def imbin4ili(file_p, maxsize):
         out_file2.close()
         base = os.path.splitext(script_file_p)[0]
         os.rename(script_file_p, base + ".ijm")
-        call([getFIJIpath(), '-macro',
+        call([fiji_path, '-macro',
               base.replace('/', '\\') + ".ijm"])  # , stdout = PIPE)
     else: bin = 1
     return bin

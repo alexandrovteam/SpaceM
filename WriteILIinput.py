@@ -85,9 +85,9 @@ def annotationSM2CSV(MFA, MFI, fdr, nbin, radius, tf_obj):
     os.chdir(MFI + 'MALDI/')
     ds_name = glob.glob('*.imzML')[0].replace('.imzML', '')
     d = sm.dataset(ds_name)
-    results = sm.msm_scores([d], d.annotations(fdr)).T
+    results = sm.msm_scores([d], d.annotations(database='HMDB-v2.5', fdr=fdr)).T
 
-    predata = preCSVdatagen(MFA + 'SURF/transformedMarks.npy', radius, nbin, PlainFirst=False)
+    predata = preCSVdatagen(MFA + 'Fiducials/transformedMarks.npy', radius, nbin, PlainFirst=False)
     data_csv = CSVdatagen(predata, results, d)
     writeCSV(path = MFA + '/ili/sm_annotation_detections.csv', data = data_csv)
 

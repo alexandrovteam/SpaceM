@@ -1,46 +1,79 @@
 from skimage import transform as tf
+from skimage import filters
+from skimage import exposure
+from scipy import ndimage
 from scipy.optimize import basinhopping
-import itertools
 from scipy import spatial
-import matlab.engine
-import glob, os
+import os, gc
 import numpy as np
 import matplotlib.pyplot as plt
 import tifffile as tiff
-import seaborn as sns
 import spaceM.ImageFileManipulation.FIJIcalls as fc
 
-def penMarksFeatures(MF, prefix, int_treshold):
+def penMarksFeatures(MF, prefix, whole_image=True):
     """Obtain coordinates of the pixels at the edge of the penmarks from the tile frames in both pre- and post-MALDI
     microscopy datasets using matlab implementation of the SURF algorithm.
 
     Args:
         MF (str): path to Main Folder.
         prefix (str): either 'pre' or 'post' for pre- or post-MALDI dataset, respectively.
-        int_treshold (float): if given, performs an intensity based threshold on the tile frames and run SURF algorithm
-        on the resulting binary mask.
-
+        whole_image (bool): whether or not perform the fiducial detection on the stitched image. If False, performs
+            on the tiled images, uses less RAM but much slower.
     """
+
+    def fiducialFinder(im_p):
+        # prefix= 'post'
+        # im_p = MF + 'Analysis/StitchedMicroscopy/' + prefix + 'MALDI_FLR/' + 'img_t1_z1_c1'
+        # im_p = 'E:\Experiments\TNFa_2.3_SELECTED\Analysis\StitchedMicroscopy\preMALDI_FLR\img_XY030.tif'
+
+        im = tiff.imread(im_p)
+        if len(np.shape(im)) > 2:
+            im = im[0,:,:]
+        val = filters.threshold_otsu(im)
+
+        hist, bins_center = exposure.histogram(im)
+        # plt.plot(bins_center, hist, lw=2)
+        # plt.axvline(val, color='k', ls='--')
+
+        BW = np.zeros(np.shape(im))
+        BW[im < val] = 1
+        BW[im < 100] = 0
+        im = []
+        # opening
+        struct2 = ndimage.generate_binary_structure(2,1)
+        iteration = 10
+        rec_o1 = ndimage.binary_erosion(BW, structure=struct2, iterations=iteration).astype(BW.dtype)
+        BW = []
+        rec_o2 = ndimage.binary_dilation(rec_o1, structure=struct2, iterations=iteration).astype(rec_o1.dtype)
+        rec_o1 = []
+        rec_c1 = ndimage.binary_dilation(rec_o2, structure=struct2, iterations=iteration).astype(rec_o2.dtype)
+        rec_o2 = []
+        rec_c2 = ndimage.binary_dilation(rec_c1, structure=struct2, iterations=iteration).astype(rec_c1.dtype)
+        gc.collect()
+        edge = filters.sobel(rec_c2)
+        rec_o2 = []
+        plt.imshow(edge)
+        x,y = np.where(edge > 0)
+        return x,y
+
     folder = MF + 'Analysis/StitchedMicroscopy/' + prefix + 'MALDI_FLR/'
-    [picXcoord, picYcoord] = fc.readTileConfReg(folder)
-    eng = matlab.engine.start_matlab()
-    X = []
-    Y = []
-    for item in os.listdir(folder):
-        if item.endswith('.tif'):
-            coords = eng.treshAndSURF(folder + item, int_treshold)
-            merged = list(itertools.chain(*coords))
-            y_coord = merged[::2]
-            x_coord = merged[1::2]
-            picInd = int(item[len(item) - 7:len(item) - 4])
-            for i in range(len(x_coord)):
-                if x_coord[i] < (1608 - 1608*0.1) and y_coord[i] < (1608 - 1608*0.1):
-                    xScaled = x_coord[i] + picXcoord[picInd - 1]
-                    yScaled = y_coord[i] + picYcoord[picInd - 1]
-                    X = np.append(X, xScaled)
-                    Y = np.append(Y, yScaled)
-            print(item)
-    eng.quit()
+    if whole_image:
+        X,Y = fiducialFinder(folder + 'img_t1_z1_c1')
+    else:
+        [picXcoord, picYcoord] = fc.readTileConfReg(folder)
+        X = []
+        Y = []
+        for item in os.listdir(folder):
+            if item.endswith('.tif'):
+                x_coord, y_coord = fiducialFinder(folder + item)
+                picInd = int(item[len(item) - 7:len(item) - 4])
+                for i in range(len(x_coord)):
+                    if x_coord[i] < (1608 - 1608*0.1) and y_coord[i] < (1608 - 1608*0.1):
+                        xScaled = x_coord[i] + picXcoord[picInd - 1]
+                        yScaled = y_coord[i] + picYcoord[picInd - 1]
+                        X = np.append(X, xScaled)
+                        Y = np.append(Y, yScaled)
+                print(item)
     np.save(MF + 'Analysis/Fiducials/' + prefix + 'XYpenmarks.npy', [X, Y])
 
     plt.figure()
@@ -201,10 +234,21 @@ def TransformMarks(MFA):
         marksMask = np.load(MFA + 'gridFit/marksMask.npy')
         tfMarksMask = []
         for i in range(np.shape(marksMask)[0]):
-            if np.shape(marksMask[i][0].T)[1] > 1:
+            if np.shape(marksMask[i][0].T)[0] > 1:
                 tfMask = transform(marksMask[i][0].T, marksMask[i][1].T, transX, transY, rot)
                 tfMarksMask.append([tfMask[:, 0], tfMask[:, 1]])
             else:
                 tfMarksMask.append([[], []])
                 print('empty')
         np.save(MFA + '/Fiducials/transformedMarksMask.npy', tfMarksMask)
+
+    penmarks = np.load(MFA + 'Fiducials/preXYpenmarks.npy')
+    plt.figure(figsize=[50,100])
+    plt.scatter(penmarks[0,:], penmarks[1,:], 1, c='k')
+    plt.axis('equal')
+    for i in range(np.shape(tfMarksMask)[0]):
+        if np.shape(tfMarksMask[i][0].T)[0] > 1:
+            plt.scatter(tfMarksMask[i][0].T, tfMarksMask[i][1].T, 1, 'r')
+    plt.scatter(X, Y, 1, c='g')
+    plt.savefig(MFA + '/Fiducials/registration_result.png', dpi=100)
+    plt.close('all')

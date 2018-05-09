@@ -7,7 +7,6 @@ import codecs
 from scipy.optimize import basinhopping
 import re
 import itertools
-# import matlab.engine
 import scipy.io
 import spaceM.ImageFileManipulation.manipulations as manip
 import tqdm
@@ -19,15 +18,20 @@ import spaceM.ImageFileManipulation.FIJIcalls as fc
 
 
 def spotFinder(path, layer=3):
+    """Detect ablation marks on the tiled images. For details, see the paper.
+    Args:
+        path (str): path of the image to detect ablation marks on.
+
+    """
 
     def scale(arr):
+        """Scale array between 0 and 1"""
         return (arr - np.min(arr)) / (np.max(arr) - np.min(arr))
 
     def contrast(arr, min, max=1):
+        """Clip array between min and max values"""
         return np.clip(arr, min, max)
 
-    # path = 'E:/Experiments\TNFa_2.3_SELECTED\Analysis\StitchedMicroscopy/postMALDI_FLR/img_XY049.tif'
-    img_i = plt.imread(path)
     img = scale(img_i)
     contrast_min = np.mean(img) + 2*np.std(img)
     if contrast_min >=1: contrast_min=0.8
@@ -43,16 +47,16 @@ def spotFinder(path, layer=3):
     # plt.imshow(mask1, cmap='gray')
 
     int_thresh = np.mean(mask1 + 3.5*np.std(mask1))
-    struct = ndimage.generate_binary_structure(2,2)
-    mask2 = ndimage.binary_dilation(mask1>int_thresh, structure=struct).astype(mask1.dtype)
+    struct = ndimage.generate_binary_structure(2,1)
+    mask2 = ndimage.binary_dilation(mask1>int_thresh, structure=struct, iterations=20).astype(mask1.dtype)
     # plt.imshow(mask2, cmap='gray')
 
     ff_masked = np.fft.fftshift(mask2)*ff
     # F2 = 20 * np.log10(abs(np.fft.fftshift(ff_masked))+1)
     # plt.imshow(F2, cmap='gray')
 
-    freq_up = 0.9
-    freq_down = 0
+    freq_up = 0.6
+    freq_down = 0.0
     [N, M] = np.shape(img)
     dx = 1
     KX0 = (np.mod(1 / 2 + np.arange(0,M) / M, 1) - 1 / 2)
@@ -68,21 +72,10 @@ def spotFinder(path, layer=3):
     rec = contrast(rec, np.percentile(rec, 1), np.percentile(rec, 99))
     # plt.imshow(rec)
 
-    rec_bw = rec > np.mean(rec) + 2*np.std(rec)
-    struct2 = ndimage.generate_binary_structure(2,3)
-    rec_e = ndimage.binary_erosion(rec_bw, structure=struct2).astype(rec_bw.dtype)
-    rec_o = ndimage.binary_dilation(rec_e, structure=struct2).astype(rec_bw.dtype)
-    # plt.imshow(rec_o)
-
-    label_img = label(rec_o, connectivity=rec_o.ndim)
+    rec_bw = rec > np.mean(rec) + 2.5*np.std(rec)
+    label_img = label(rec_bw, connectivity=rec_bw.ndim)
     props = regionprops(label_img)
     centroids = [[props[i].centroid[1],props[i].centroid[0]]  for i in range(len(props))]
-
-    # plt.imshow(img_i, cmap='gray')
-    # for i in range(len(props)):
-    #     plt.scatter(props[i].centroid[1],
-    #                 props[i].centroid[0],
-    #                 10, c=[0,1,0])
 
     return centroids
 
@@ -579,22 +572,22 @@ def GridFit(MF, optimization=False, manual_cleaning=True, MarkFinderFT=True):
                               MFA + 'StitchedMicroscopy/postMALDI_FLR/img_t1_z1_c1',
                               MFA + 'gridFit/2nd_detection_cropped_window200.png', window=window)
 
-        if not os.path.exists(MFA + 'gridFit/ablation_marks_XY_2nd_detection.npy'):
-            X, Y = np.load(MFA + 'gridFit/ablation_marks_XY.npy')
-            minX = np.min(X) - window
-            minY = np.min(Y) - window
-            # eng = matlab.engine.start_matlab()
-            # centroids = np.asarray(eng.spotFinder2(MFA + 'gridFit/blue_window200.png', 1))
-            centroids_2nd = spotFinder(MFA + 'gridFit/2nd_detection_cropped_window200.png')
-            # centroids_curated = np.array(eng.filterOutMarks(MFA + '/gridFit/ablation_marks_XY_2ndFT.npy',
-            #                          MFA + 'gridFit/blue_window200.png')).T
-            centroids_2nd = np.reshape(centroids_2nd, np.shape(centroids_2nd))
-            dataPoints = np.zeros([i for i in reversed(np.shape(centroids_2nd))])
-            dataPoints[0,:] = centroids_2nd[:, 0] + minY
-            dataPoints[1,:] = centroids_2nd[:, 1] + minX
+        # if not os.path.exists(MFA + 'gridFit/ablation_marks_XY_2nd_detection.npy'):
+        X, Y = np.load(MFA + 'gridFit/ablation_marks_XY.npy')
+        minX = np.min(X) - window
+        minY = np.min(Y) - window
+        # eng = matlab.engine.start_matlab()
+        # centroids = np.asarray(eng.spotFinder2(MFA + 'gridFit/blue_window200.png', 1))
+        centroids_2nd = spotFinder(MFA + 'gridFit/2nd_detection_cropped_window200.png')
+        # centroids_curated = np.array(eng.filterOutMarks(MFA + '/gridFit/ablation_marks_XY_2ndFT.npy',
+        #                          MFA + 'gridFit/blue_window200.png')).T
+        centroids_2nd = np.reshape(centroids_2nd, np.shape(centroids_2nd))
+        dataPoints = np.zeros([i for i in reversed(np.shape(centroids_2nd))])
+        dataPoints[0,:] = centroids_2nd[:, 0] + minY
+        dataPoints[1,:] = centroids_2nd[:, 1] + minX
 
-            # dataPoints = np.array(centroids).T
-            np.save(MFA + 'gridFit/ablation_marks_XY_2nd_detection.npy', dataPoints)
+        # dataPoints = np.array(centroids).T
+        np.save(MFA + 'gridFit/ablation_marks_XY_2nd_detection.npy', dataPoints)
 
         dataPoints = np.load(MFA + 'gridFit/ablation_marks_XY_2nd_detection.npy')
         # eng.quit()
@@ -678,41 +671,87 @@ def GridFit(MF, optimization=False, manual_cleaning=True, MarkFinderFT=True):
 
 def regionGrowing(cIM, initPos, thresVal, maxDist):
 
-    regVal = cIM[initPos[0], initPos[1]]
 
+    regVal = cIM[initPos[1], initPos[0]]
+    nRow, nCol = np.shape(cIM)
+    J = np.zeros([nRow, nCol], dtype=bool)
+    queue = [[initPos[1], initPos[0]]]
 
-def regionGrowingAblationMarks():
+    while len(queue) > 0:
+        xv = queue[0][0]
+        yv = queue[0][1]
 
-    marks = np.load('E:\Experiments\TNFa_2.3_SELECTED\Analysis\gridFit/ablation_marks_XY_2nd_detection.npy')
-    mark_check_p = 'E:\Experiments\TNFa_2.3_SELECTED\Analysis\gridFit\marks_check\PHASE_crop_bin1x1_window100.png'
+        del queue[0]
+
+        for i in [-1,0,1]:
+            for j in [-1,0,1]:
+                if xv+i>=0 and xv+1 <= nRow-1 and \
+                        yv+j>=0 and yv+j <=nCol-1  and \
+                        any([i, j]) and \
+                        ~J[xv+i, yv+j] and \
+                        np.sqrt((xv+i - initPos[1])**2 + (yv+j - initPos[0])**2) < maxDist and \
+                        cIM[xv+i, yv+j] <= (regVal + thresVal) and cIM[xv+i, yv+j] >= (regVal - thresVal):
+                            J[xv+i, yv+j] = True
+                            queue.append([xv+i, yv+j])
+
+    x, y = np.where(J == True)
+
+    return x,y
+
+def regionGrowingAblationMarks(MFA):
+
+    # MFA = 'E:\Experiments\TNFa_2.3_SELECTED\Analysis/'
+    marks = np.load(MFA + 'gridFit/xye_clean2.npy')
+    mark_check_p = MFA + 'gridFit/marks_check/PHASE_crop_bin1x1_window100.png'
     img = plt.imread(mark_check_p)
     window=100
+    cut_window = 50
     marks_s = np.zeros(np.shape(marks))
     marks_s[0, :] = marks[0, :] - np.min(marks[0, :]) + window
     marks_s[1, :] = marks[1, :] - np.min(marks[1, :]) + window
+    img_rgb = np.repeat(img[:, :, np.newaxis], 3, axis=2)
+    # marksMask = {}
+    # for i in range(np.shape(marks_s)[1]):
+    #     marksMask[str(i)] = {}
+    #     marksMask[str(i)]['x'] = []
+    #     marksMask[str(i)]['y'] = []
+    marksMask = []
 
-    plt.imshow(img, cmap='gray')
-    plt.scatter(marks_s[0, :], marks_s[1, :], 10, c=[0, 1, 0])
+    for i in tqdm.tqdm(range(np.shape(marks_s)[1])):
+        im_cut = img[int(marks_s[0, i]) - cut_window : int(marks_s[0, i]) + cut_window,
+                 int(marks_s[1, i]) - cut_window:int(marks_s[1, i]) + cut_window]
+        thresh = np.percentile(im_cut, 95)
+        posX, posY = np.where(im_cut > thresh)
 
-    i = 10
-    im_cut = img[int(marks_s[1, i]) - 50 : int(marks_s[1, i]) + 50, int(marks_s[0, i]) - 50:int(marks_s[0, i]) + 50]
-    # plt.imshow(im_cut, cmap='gray')
-    thresh = np.percentile(im_cut, 90)
+        if len(posX) == 0:
+            posX, posY = np.where(im_cut > 0.8)
 
-    posX, posY = np.where(im_cut > thresh)
-    tree = spatial.KDTree(list(zip(posX.ravel(), posY.ravel())))
-    pts = np.array([[50,50]])
-    dist, ind = tree.query(pts)
+        tree = spatial.KDTree(list(zip(posX.ravel(), posY.ravel())))
+        pts = np.array([[cut_window, cut_window]])
+        dist, ind = tree.query(pts)
 
-    plt.imshow(im_cut, cmap='gray')
-    plt.scatter(50, 50, 50, c=[0, 1, 0])
-    plt.scatter(posY[ind], posX[ind], 50, c=[1, 0, 0])
+        xi,yi = regionGrowing(cIM=im_cut,
+                      initPos=[posY[ind][0], posX[ind][0]],
+                      thresVal=0.4,
+                      maxDist=30)
 
-    regionGrowing(im_cut, [posY[ind][0], posX[ind][0]])
+        x = xi + marks[0, i] - cut_window
+        y = yi + marks[1, i] - cut_window
 
+        # marksMask[str(i)]['x'] = x
+        # marksMask[str(i)]['y'] = y
 
+        marksMask.append([x, y])
 
+        x_int = [int(k) for k in xi + marks_s[0, i] - cut_window]
+        y_int = [int(k) for k in yi + marks_s[1, i] - cut_window]
 
+        img_rgb[x_int, y_int, 0] = 0
+        img_rgb[x_int, y_int, 1] = 1
+        img_rgb[x_int, y_int, 2] = 0
+
+    tiff.imsave(MFA + 'gridFit/AM_segmentation.tiff', img_rgb)
+    np.save(MFA + 'gridFit/marksMask.npy',marksMask)
 
 def marksSegmentedMask(MFA):
     """Segment ablation marks using their center of mass as seed for a region growing algorithm.
@@ -722,7 +761,7 @@ def marksSegmentedMask(MFA):
     Args:
         MFA (str): path to Main Folder Analysis.
     """
-    # eng = matlab.engine.start_matlab()
+    eng = matlab.engine.start_matlab()
     window=100
     dummy = eng.regionGrowAblationMarks(MFA + 'gridFit/marks_check/PHASE_crop_bin1x1_window100.png',
                                             MFA + 'gridFit/xye_clean2.npy', window,

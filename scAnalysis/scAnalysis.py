@@ -721,7 +721,7 @@ def mergeMORPHnMOL4cyt(MF, CDs, fetch_ann='offline',  tol_fact=0.2, filter = 'me
             'online': (default) queries metaspace using the name of the .imzml data present in the MALDI input folder
                 as dataset name,
             'offline': reads annotation images from a provided dataframe..
-        tol_fact (int): tolerance factor to use for the filter 'mean'.
+        tol_fact (float): tolerance factor to use for the filter 'mean'.
         filter (str): filter strategy to select background and on-sample annotation images:
             'mean': compare the mean ion intensity from off and on-sample pixels. Consider annotation as coming from
                 the sample if  mean on-sample intensity > tol_fact * mean off-sample intensity.

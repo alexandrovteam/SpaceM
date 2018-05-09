@@ -50,10 +50,10 @@ fc.TileConfFormat(MFI + 'Microscopy/preMALDI/', MFA_Sprm, tif_files) #reformat m
 gc.collect() #free the RAM
 fc.callFIJIstitch(MFA_Sprm) #Call Fiji to perform stitching
 # Generate a composite image with the two first channels
-fc.callFIJImergeRedGray(base_path = MFA_Sprm,
-                        red_filename = 'img_t1_z1_c2',
-                        gray_filename = 'img_t1_z1_c1',
-                        save_filename= 'Composite.png')
+fc.callFIJImergeChannels(base_path = MFA_Sprm,
+                         red_filename = 'img_t1_z1_c2',
+                         gray_filename = 'img_t1_z1_c1',
+                         save_filename= 'Composite.png')
 gc.collect()
 print('Pre-MALDI Stitching finished')
 
@@ -151,10 +151,10 @@ if not os.path.exists(MFA + 'CellProfilerAnalysis/'):
 CP_window = 100
 manip.crop2coords4CP(MFA + 'SURF/transformedMarks.npy',
                              MFA_Sprm, MFA + 'CellProfilerAnalysis/', window = CP_window)
-fc.callFIJImergeRedGray(base_path = MFA + 'CellProfilerAnalysis/',
-                        red_filename = 'img_t1_z1_c2.tif',
-                        gray_filename = 'img_t1_z1_c1.tif',
-                        save_filename = 'Composite_window100_adjusted.png')
+fc.callFIJImergeChannels(base_path =MFA + 'CellProfilerAnalysis/',
+                         red_filename = 'img_t1_z1_c2.tif',
+                         gray_filename = 'img_t1_z1_c1.tif',
+                         save_filename = 'Composite_window100_adjusted.png')
 gc.collect()
 eng = matlab.engine.start_matlab()
 dummy = eng.imAdjQuantiles(0.01, MFA + 'CellProfilerAnalysis/img_t1_z1_c2.tif',
