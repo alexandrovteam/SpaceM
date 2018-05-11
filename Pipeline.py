@@ -1,9 +1,14 @@
 import spaceM
 import pandas as pd
 import os, gc
+from subprocess import call
+import GUI_maldi_helper
 
 def getPath(field):
     return pd.read_json(os.path.dirname(spaceM.__file__) + '\\paths.json')[field].as_matrix()[0]
+
+def curator():
+    call(['python', os.path.dirname(GUI_maldi_helper.__file__) + '\\MaldiHelper.py'])
 
 def stitchMicroscopy(MF,
                      merge_colors,

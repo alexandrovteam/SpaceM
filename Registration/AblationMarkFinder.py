@@ -32,6 +32,7 @@ def spotFinder(path, layer=3):
         """Clip array between min and max values"""
         return np.clip(arr, min, max)
 
+    img_i = tiff.imread(path)
     img = scale(img_i)
     contrast_min = np.mean(img) + 2*np.std(img)
     if contrast_min >=1: contrast_min=0.8
