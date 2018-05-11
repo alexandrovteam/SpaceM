@@ -30,6 +30,7 @@ def ion2fluoTF(ion_img):
     # return np.flipud(ion_img) # --> TF for HepaNov17
 
 MF = getPath('MF')
+print('Main folder: {}'.format(MF))
 
 stitchMicroscopy(MF,
                  preMALDI=False,

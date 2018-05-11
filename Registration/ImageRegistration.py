@@ -29,11 +29,21 @@ def penMarksFeatures(MF, prefix, whole_image=True):
         im = tiff.imread(im_p)
         if len(np.shape(im)) > 2:
             im = im[0,:,:]
-        val = filters.threshold_otsu(im)
+        # im = np.log2(im+1)
+        val = filters.threshold_otsu(im, nbins=65536)
+        val = np.mean(im) - np.std(im)/2
 
         hist, bins_center = exposure.histogram(im)
-        # plt.plot(bins_center, hist, lw=2)
-        # plt.axvline(val, color='k', ls='--')
+
+        plt.plot(bins_center, hist, lw=2)
+        plt.axvline(val, color='k', ls='--', label='Otsu')
+        plt.yscale('log')
+        plt.xlabel('Pixel intensities')
+        plt.ylabel('Log10(counts)')
+        plt.title('Mean- std/2')
+        plt.legend()
+        plt.savefig(MF + 'Analysis/Fiducials/' + prefix + '_histogram.png')
+        plt.close('all')
 
         BW = np.zeros(np.shape(im))
         BW[im < val] = 1
@@ -52,13 +62,13 @@ def penMarksFeatures(MF, prefix, whole_image=True):
         gc.collect()
         edge = filters.sobel(rec_c2)
         rec_o2 = []
-        plt.imshow(edge)
+        # plt.imshow(edge)
         x,y = np.where(edge > 0)
         return x,y
 
     folder = MF + 'Analysis/StitchedMicroscopy/' + prefix + 'MALDI_FLR/'
     if whole_image:
-        X,Y = fiducialFinder(folder + 'img_t1_z1_c1')
+        X,Y = fiducialFinder(im_p=folder + 'img_t1_z1_c1')
     else:
         [picXcoord, picYcoord] = fc.readTileConfReg(folder)
         X = []
