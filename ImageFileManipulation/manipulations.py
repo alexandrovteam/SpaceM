@@ -59,7 +59,7 @@ def crop2coords4CP(coords_p, imgF_p, saveF_p, window):
     for item in os.listdir(imgF_p):
         if item.startswith('img_t1_z1'):
             print(imgF_p + item)
-            img = np.array(plt.imread(imgF_p + item), dtype=np.uint16)
+            img = np.array(tiff.imread(imgF_p + item), dtype=np.uint16)
             tiff.imsave(saveF_p + item + '.tif',
                                img[np.min(X) - window:np.max(X) + window, np.min(Y) - window:np.max(Y) + window])
 
@@ -80,7 +80,7 @@ def imAdjQuantiles(pc, im_p, adj_p):
     img = scale(plt.imread(im_p))
     low_in = np.percentile(img, pc)
     high_in = np.percentile(img, 100 - pc)
-    adjusted = scale(np.clip(img, low_in, high_in))
-    plt.imshow(adjusted)
-    tiff.imsave(adj_p, adjusted)
+    adjusted = scale(np.clip(img, low_in, high_in)) * 255
+    # plt.imshow(adjusted)
+    tiff.imsave(adj_p, adjusted.astype('uint8'))
 

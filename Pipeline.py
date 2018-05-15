@@ -156,16 +156,13 @@ def ablationMarksFilter(MF, marks_check=True):
             path=MF + 'Analysis/gridFit/marks_check/ablation_marks_checkTHEORETICAL.csv',
             data=predata)
 
-def registration(MF, tf_obj, ili_only=False, ili_fdr=0.2):
+    if not os.path.exists(MF + 'Analysis/gridFit/marksMask.npy'):
+        spaceM.Registration.AblationMarkFinder.regionGrowingAblationMarks(MF + 'Analysis/')
+
+def registration(MF, tf_obj, ili_fdr=0.2):
 
     if not os.path.exists(MF + 'Analysis/Fiducials/optimized_params.npy'):
         spaceM.Registration.ImageRegistration.fiducialsAlignment(MF + 'Analysis/')
-
-    if ili_only==False:
-        if not os.path.exists(MF + 'Analysis/Fiducials/transformedMarksMask.npy'):
-            spaceM.Registration.AblationMarkFinder.regionGrowingAblationMarks(MF + 'Analysis/')
-
-    if not os.path.exists(MF + 'Analysis/Fiducials/transformedMarksMask.npy'):
         spaceM.Registration.ImageRegistration.TransformMarks(MF + 'Analysis/')
 
     if not os.path.exists(MF + 'Analysis/ili/'):
@@ -214,9 +211,10 @@ def cellSegmentation(MF,
         save_filename='Composite_window100_adjusted.png')
     gc.collect()
 
-    spaceM.ImageFileManipulation.manipulations.imAdjQuantiles(pc=0.01,
-                                                              im_p=MF + 'Analysis/CellProfilerAnalysis/img_t1_z1_c2.tif',
-                                                              adj_p=MF + 'Analysis/CellProfilerAnalysis/img_t1_z1_c2_adjusted.tif')
+    spaceM.ImageFileManipulation.manipulations.imAdjQuantiles(pc=1,
+                                                              im_p=MF + 'Analysis/CellProfilerAnalysis/img_t1_z1_c3.tif',
+                                                              adj_p=MF + 'Analysis/CellProfilerAnalysis/img_t1_z1_c3_adjusted.tif')
+
     print('Start CellProfiler Anlalysis')
     cp_p = getPath('CellProfiler path')
     cppipe_p = getPath('CellProfiler pipeline path')
