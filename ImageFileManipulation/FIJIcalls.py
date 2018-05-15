@@ -1,5 +1,5 @@
 import spaceM
-import os
+import os, re
 import codecs
 import numpy as np
 from subprocess import call
@@ -15,7 +15,7 @@ def TileConfFormat(path, dir_fliplr, tif_files):
 
     Args:
         path (str): path of the directory containing the microscope metadata file (named 'out.txt' by default).
-        dir_fliplr (path): path of the directory containing the transformed tiled frames to stitch.
+        dir_fliplr (str): path of the directory containing the transformed tiled frames to stitch.
         tif_files (array): names of each tiled frames to stitch.
 
     """
@@ -25,15 +25,17 @@ def TileConfFormat(path, dir_fliplr, tif_files):
         out_file = open(dir_fliplr + 'TileConfiguration.txt', 'w')
         out_file.write('# Define the number of dimensions we are working on\ndim = 2\n\n# Define the image coordinates\n')
         i = 0
+        base = re.findall('^(.*)\d{3}.tif$', tif_files[0])[0]
         for row in txt_file:
             if row.startswith('#'):
-                #print(row.strip().split('\t'))
+                # print(row.strip().split('\t'))
                 if i <= np.shape(tif_files)[0]-1:
                     data.append(row.strip().split('\t'))
                     data[i][0] = str(i+1).zfill(3)
                     data[i][1] = float(data[i][1].replace(',','.'))
                     data[i][2] = float(data[i][2].replace(',','.'))
-                    out_file.write('img_XY{}.tif; ; ({}, {})\n'.format(data[i][0],data[i][1],data[i][2]))
+                    out_file.write(base + '{}.tif; ; ({}, {})\n'.format(data[i][0],data[i][1],data[i][2]))
+                    # re.findall('^(.*)(\d{3})$', 'seq000_XY120')
                     # print i
                     i = i+1
             elif row.startswith('Spectral Loop'):
