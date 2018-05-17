@@ -151,7 +151,9 @@ def readTileConfReg(dir_fliplr):
     dataX = []
     dataY = []
     for row in txt_file:
-        if row.startswith('img'):
+        # print(row)
+        if row.endswith(')\n'):
+            # print(row)
             dataY = np.append(dataY, float(row.split()[2].replace('(', '').replace(',', '')))
             dataX = np.append(dataX, float(row.split()[3].replace(')', '')))
     dataXscaled = dataX - np.min(dataX)
