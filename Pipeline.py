@@ -46,9 +46,10 @@ def stitchMicroscopy(MF,
             tf,
             MF + 'Input/Microscopy/preMALDI/',
             MF + 'Analysis/StitchedMicroscopy/preMALDI_FLR/')
-        spaceM.ImageFileManipulation.FIJIcalls.TileConfFormat(MF + 'Input/Microscopy/preMALDI/',
-                                                              MF + 'Analysis/StitchedMicroscopy/preMALDI_FLR/',
-                                                              tif_files)
+
+        spaceM.ImageFileManipulation.FIJIcalls.TileConfFormat(path= MF + 'Input/Microscopy/preMALDI/',
+                                                              dir_fliplr=MF + 'Analysis/StitchedMicroscopy/preMALDI_FLR/',
+                                                              tif_files= tif_files)
         gc.collect()
         spaceM.ImageFileManipulation.FIJIcalls.callFIJIstitch(MF + 'Analysis/StitchedMicroscopy/preMALDI_FLR/')
         print('Pre-MALDI Stitching finished')
@@ -214,6 +215,9 @@ def cellSegmentation(MF,
     spaceM.ImageFileManipulation.manipulations.imAdjQuantiles(pc=1,
                                                               im_p=MF + 'Analysis/CellProfilerAnalysis/img_t1_z1_c3.tif',
                                                               adj_p=MF + 'Analysis/CellProfilerAnalysis/img_t1_z1_c3_adjusted.tif')
+    spaceM.ImageFileManipulation.manipulations.imAdjQuantiles(pc=1,
+                                                              im_p=MF + 'Analysis/CellProfilerAnalysis/img_t1_z1_c2.tif',
+                                                              adj_p=MF + 'Analysis/CellProfilerAnalysis/img_t1_z1_c2_adjusted.tif')
 
     print('Start CellProfiler Anlalysis')
     cp_p = getPath('CellProfiler path')
@@ -223,7 +227,7 @@ def cellSegmentation(MF,
 
     spaceM.scAnalysis.Segmentation.cellOutlines(MF + 'Analysis/CellProfilerAnalysis/Composite_window100_adjusted.png',
                              CP_window,
-                             MF + 'Analysis/CellProfilerAnalysis/Labelled_cells.tif',
+                             MF + 'Analysis/CellProfilerAnalysis/Labelled_cells.tiff',
                              MF + 'Analysis/CellProfilerAnalysis/Contour_cells_adjusted.png')
 
 def spatioMolecularMatrix(MF, tf_obj, CDs=[0.75]):
@@ -233,7 +237,7 @@ def spatioMolecularMatrix(MF, tf_obj, CDs=[0.75]):
 
     spaceM.scAnalysis.scAnalysis.defMORPHfeatures(MF)
     fetch_ann = 'online' # either 'online' or 'offline'
-    filter = 'mean'  # either 'mean' or 'correlation'
+    filter = 'correlation'  # either 'mean' or 'correlation'
     tol_fact = -0.2
 
     spaceM.scAnalysis.scAnalysis.defMOLfeatures(

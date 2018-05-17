@@ -25,8 +25,8 @@ def ion2fluoTF(ion_img):
     Returns:
         out (array): the transformed ion image.
     """
-    # return ion_img.T  # --> TF1 HepaJune dataset batches FASTER
-    return np.fliplr(ion_img) #--> TF2 HepaJune, 20171206_CoCulture\M5
+    return ion_img.T  # --> TF1 HepaJune dataset batches FASTER
+    # return np.fliplr(ion_img) #--> TF2 HepaJune, 20171206_CoCulture\M5
     # return np.flipud(ion_img) # --> TF for HepaNov17
 
 channels = ['gray', 'red', 'green', 'blue']
@@ -35,11 +35,11 @@ MF = getPath('MF')
 print('Main folder: {}'.format(MF))
 
 stitchMicroscopy(MF,
-                 preMALDI=False,
+                 preMALDI=True,
                  postMALDI=False,
                  tf=img_tf,
-                 merge_colors=['gray', 'red', 'green'],
-                 merge_filenames=['img_t1_z1_c1', 'img_t4_z1_c1', 'img_t3_z1_c1'])
+                 merge_colors=[],
+                 merge_filenames=[])
 ablationMarksFinder(MF)
 fiducialsFinder(MF)
 
@@ -47,6 +47,7 @@ curator()
 
 ablationMarksFilter(MF)
 registration(MF, tf_obj=ion2fluoTF, ili_fdr=0.2)
-cellSegmentation(MF, merge_colors=['gray', 'red'], merge_filenames=['img_t1_z1_c1', 'img_t1_z1_c2'])
+
+cellSegmentation(MF, merge_colors=['gray', 'red'], merge_filenames=['img_t1_z1_c1.tif', 'img_t1_z1_c2.tif'])
 spatioMolecularMatrix(MF, tf_obj=ion2fluoTF)
 
