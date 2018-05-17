@@ -25,13 +25,24 @@ def TileConfFormat(path, dir_fliplr, tif_files):
         out_file = open(dir_fliplr + 'TileConfiguration.txt', 'w')
         out_file.write('# Define the number of dimensions we are working on\ndim = 2\n\n# Define the image coordinates\n')
         i = 0
-        base = re.findall('^(.*)\d{3}.tif$', tif_files[0])[0]
+        if np.shape(tif_files)[0]-1 >= 10:
+            n_zfill = 2
+        elif np.shape(tif_files)[0]-1 >= 100:
+            n_zfill = 3
+        elif np.shape(tif_files)[0]-1 >= 1000:
+            n_zfill = 4
+        else: n_zfill = 1
+        base = re.findall('^(.*)\d{' + str(n_zfill) + '}.tif$', tif_files[0])[0]
+        checkpoint = 0
         for row in txt_file:
-            if row.startswith('#'):
-                # print(row.strip().split('\t'))
+            if row.startswith('Point Name'):
+                checkpoint = 1
+            if row.startswith('#') and checkpoint == 1:
+
                 if i <= np.shape(tif_files)[0]-1:
+                    print(row.strip().split('\t'))
                     data.append(row.strip().split('\t'))
-                    data[i][0] = str(i+1).zfill(3)
+                    data[i][0] = str(i+1).zfill(n_zfill)
                     data[i][1] = float(data[i][1].replace(',','.'))
                     data[i][2] = float(data[i][2].replace(',','.'))
                     out_file.write(base + '{}.tif; ; ({}, {})\n'.format(data[i][0],data[i][1],data[i][2]))
