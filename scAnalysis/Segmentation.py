@@ -19,7 +19,7 @@ def callCP(MFA, cp_p, cppipe_p):
     file.write(MFA + 'CellProfilerAnalysis\img_t1_z1_c1.tif\n')
     file.write(MFA + 'CellProfilerAnalysis\img_t1_z1_c2.tif\n')
     file.write(MFA + 'CellProfilerAnalysis\img_t1_z1_c2_adjusted.tif\n')
-    file.write(MFA + 'CellProfilerAnalysis\img_t1_z1_c3.tif')
+    file.write(MFA + 'CellProfilerAnalysis\img_t1_z1_c3_adjusted.tif')
     file.close()
     call([cp_p,
           '-r',

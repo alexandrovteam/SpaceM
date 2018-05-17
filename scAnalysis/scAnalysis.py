@@ -15,7 +15,7 @@ import codecs
 
 
 def defMOLfeatures(MF,
-                   tf_obj,
+                   tf_obj=ion2fluoTF,
                    CDs=[0.75],
                    tol_fact=-0.2,
                    filter = 'correlation',
@@ -92,13 +92,13 @@ def defMOLfeatures(MF,
         return pix_size
 
     MFA = MF + 'Analysis/'
-    marksMask = np.load(MFA + 'SURF/transformedMarksMask.npy')
-    cellMask = tiff.imread(MFA + 'CellProfilerAnalysis/Labelled_cells.tif')
+    marksMask = np.load(MFA + 'Fiducials/transformedMarksMask.npy')
+    cellMask = tiff.imread(MFA + 'CellProfilerAnalysis/Labelled_cells.tiff')
     fluo = tiff.imread(MFA + 'CellProfilerAnalysis/img_t1_z1_c2.tif')
     fluo_nucl = tiff.imread(MFA + 'CellProfilerAnalysis/img_t1_z1_c3.tif')
     bf = tiff.imread(MFA + 'CellProfilerAnalysis/img_t1_z1_c1.tif')
     window = 100
-    coordX, coordY = np.load(MFA + 'SURF/transformedMarks.npy')
+    coordX, coordY = np.load(MFA + 'Fiducials/transformedMarks.npy')
     os.chdir(MF + 'Input/MALDI/')
     # ds_name = glob.glob('*.imzML')[0].replace('.imzML', '')
     pixel_size = getPixSize(MF + 'Input/')
@@ -275,11 +275,11 @@ def defMOLfeatures(MF,
 
             if filter == 'correlation':
                 fdr = 0.5
-                results1 = sm.msm_scores([d], d.annotations(fdr, database='HMDB'), db_name='HMDB').T
+                results1 = sm.msm_scores([d], d.annotations(fdr, database='HMDB-v4'), db_name='HMDB-v4').T
                 results2 = sm.msm_scores([d], d.annotations(fdr, database='ChEBI'), db_name='ChEBI').T
-                results3 = sm.msm_scores([d], d.annotations(fdr, database='LIPID_MAPS'), db_name='ChEBI').T
-                results4 = sm.msm_scores([d], d.annotations(fdr, database='SwissLipids'), db_name='ChEBI').T
-                results = pd.concat([results1, results2, results3, results4]).drop_duplicates()
+                # results3 = sm.msm_scores([d], d.annotations(fdr, database='LIPID_MAPS'), db_name='LIPID_MAPS').T
+                results4 = sm.msm_scores([d], d.annotations(fdr, database='SwissLipids'), db_name='SwissLipids').T
+                results = pd.concat([results1, results2, results4]).drop_duplicates()
                 filter_results = []
                 for i in tqdm.tqdm(range(results.shape[0])):
                     row = results.reset_index().iloc[i,:]
@@ -309,11 +309,11 @@ def defMOLfeatures(MF,
                 pmi_on = [i == 1.0 for i in pmi]
                 pmi_off = [i == 0.0 for i in pmi]
                 # mean of off_samples pixels for the annotation image to be considered as on_sample, higher means more severe
-                results1 = sm.msm_scores([d], d.annotations(fdr, database='HMDB'), db_name='HMDB').T
+                results1 = sm.msm_scores([d], d.annotations(fdr, database='HMDB-v4'), db_name='HMDB-v4').T
                 results2 = sm.msm_scores([d], d.annotations(fdr, database='ChEBI'), db_name='ChEBI').T
-                results3 = sm.msm_scores([d], d.annotations(fdr, database='LIPID_MAPS'), db_name='LIPID_MAPS').T
+                # results3 = sm.msm_scores([d], d.annotations(fdr, database='LIPID_MAPS'), db_name='LIPID_MAPS').T
                 results4 = sm.msm_scores([d], d.annotations(fdr, database='SwissLipids'), db_name='SwissLipids').T
-                results = pd.concat([results1, results2, results3, results4]).drop_duplicates()
+                results = pd.concat([results1, results2, results4]).drop_duplicates()
                 filter_results = []
                 for i in range(results.shape[0]):
                     row = results.reset_index().iloc[i,:]
@@ -818,8 +818,8 @@ def mapAnn2microCells(MF, MFA, csv_p, tf_obj,
 
     # tiff.imsave(MFA + 'Mapping/' + coloring_field + '_gray.tif', color_mask[100:-100,100:-100])
     if draw_AM:
-        marksMask = np.load(MFA + 'SURF/transformedMarksMask.npy')
-        coordX, coordY = np.load(MFA + 'SURF/transformedMarks.npy')
+        marksMask = np.load(MFA + 'Fiducials/transformedMarksMask.npy')
+        coordX, coordY = np.load(MFA + 'Fiducials/transformedMarks.npy')
         images = pd.read_hdf('C:/Users\Luca\Google Drive\A-Team\projects/1c\hepatocytes, DKFZ\datasets\Molecular images/2017-09-12-luca-mz-images.hdf5')
         os.chdir(MF + 'Input/MALDI/')
         ds_name = glob.glob('*.imzML')[0].replace('.imzML', '')
@@ -865,8 +865,8 @@ def annotation2microscopyAblationMarks(MF, sf, adduct, clip_percentile, touch_ce
     img = plt.imread(MFA + 'CellProfilerAnalysis/Contour_cells_adjusted.png')
     cellMask = tiff.imread(MFA + 'CellProfilerAnalysis/Labelled_cells.tif')
     cellMask_bw = cellMask>0
-    marksMask = np.load(MFA + 'SURF/transformedMarksMask.npy')
-    coordX, coordY = np.load(MFA + 'SURF/transformedMarks.npy')
+    marksMask = np.load(MFA + 'Fiducials/transformedMarksMask.npy')
+    coordX, coordY = np.load(MFA + 'Fiducials/transformedMarks.npy')
 
 
     sm = smau.SMInstance()
