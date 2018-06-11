@@ -57,7 +57,7 @@ def crop2coords4CP(coords_p, imgF_p, saveF_p, window):
     X = [int(x) for x in X]
     Y = [int(y) for y in Y]
     for item in os.listdir(imgF_p):
-        if item.startswith('img_t1_z1'):
+        if item.startswith('img_t'):
             print(imgF_p + item)
             img = np.array(tiff.imread(imgF_p + item), dtype=np.uint16)
             tiff.imsave(saveF_p + item + '.tif',

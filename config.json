@@ -1,6 +1,6 @@
 {
   "db": {
-    "host": "annotate.metasp.eu",
+    "host": "staging.metasp.eu",
     "database": "sm",
     "user": "sm_analytics",
     "password": "SM_analytics_hd16"

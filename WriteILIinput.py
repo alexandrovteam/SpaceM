@@ -81,11 +81,16 @@ def annotationSM2CSV(MFA, MFI, fdr, nbin, radius, tf_obj):
             ind += 1
         return data
 
+    config = {
+    'graphql_url': 'http://staging.metaspace2020.eu/graphql',
+    'moldb_url': 'http://staging.metaspace2020.eu/mol_db/v1',
+    'jwt': None}
     sm = smau.SMInstance()
+
     os.chdir(MFI + 'MALDI/')
     ds_name = glob.glob('*.imzML')[0].replace('.imzML', '')
     d = sm.dataset(ds_name)
-    results = sm.msm_scores([d], d.annotations(database='HMDB-v2.5', fdr=fdr)).T
+    results = sm.msm_scores([d], d.annotations(database='HMDB-v4', fdr=fdr), db_name='HMDB-v4').T
 
     predata = preCSVdatagen(MFA + 'Fiducials/transformedMarks.npy', radius, nbin, PlainFirst=False)
     data_csv = CSVdatagen(predata, results, d)

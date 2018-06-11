@@ -14,6 +14,9 @@ import seaborn as sns
 from scipy import ndimage
 from skimage.measure import label, regionprops
 import spaceM.ImageFileManipulation.FIJIcalls as fc
+from PIL import Image, ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+Image.MAX_IMAGE_PIXELS = None
 
 
 
@@ -32,7 +35,7 @@ def spotFinder(path, layer=3):
         """Clip array between min and max values"""
         return np.clip(arr, min, max)
 
-    img_i = tiff.imread(path)
+    img_i = plt.imread(path)
     img = scale(img_i)
     contrast_min = np.mean(img) + 2*np.std(img)
     if contrast_min >=1: contrast_min=0.8
@@ -734,7 +737,7 @@ def regionGrowingAblationMarks(MFA):
         xi,yi = regionGrowing(cIM=im_cut,
                       initPos=[posY[ind][0], posX[ind][0]],
                       thresVal=0.4,
-                      maxDist=30)
+                      maxDist=60)
 
         x = xi + marks[0, i] - cut_window
         y = yi + marks[1, i] - cut_window

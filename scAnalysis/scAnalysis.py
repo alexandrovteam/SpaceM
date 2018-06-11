@@ -15,7 +15,7 @@ import codecs
 
 
 def defMOLfeatures(MF,
-                   tf_obj=ion2fluoTF,
+                   tf_obj,
                    CDs=[0.75],
                    tol_fact=-0.2,
                    filter = 'correlation',
@@ -83,7 +83,7 @@ def defMOLfeatures(MF,
             pix_size (float): pixel size in um.
 
         """
-        txt_file = codecs.open(MFI + '/Microscopy/postMALDI/out.txt', 'r','utf-16')
+        txt_file = codecs.open(MFI + '/Microscopy/postMALDI/out.txt', 'r', 'utf-16')
         for row in txt_file:
             if row.startswith('Calibration'):
                 pix_size = float(row.strip().split()[2].replace(',', '.'))
@@ -94,8 +94,8 @@ def defMOLfeatures(MF,
     MFA = MF + 'Analysis/'
     marksMask = np.load(MFA + 'Fiducials/transformedMarksMask.npy')
     cellMask = tiff.imread(MFA + 'CellProfilerAnalysis/Labelled_cells.tiff')
-    fluo = tiff.imread(MFA + 'CellProfilerAnalysis/img_t1_z1_c2.tif')
-    fluo_nucl = tiff.imread(MFA + 'CellProfilerAnalysis/img_t1_z1_c3.tif')
+    fluo = tiff.imread(MFA + 'CellProfilerAnalysis/img_t4_z1_c1.tif')
+    fluo_nucl = tiff.imread(MFA + 'CellProfilerAnalysis/img_t5_z1_c1.tif')
     bf = tiff.imread(MFA + 'CellProfilerAnalysis/img_t1_z1_c1.tif')
     window = 100
     coordX, coordY = np.load(MFA + 'Fiducials/transformedMarks.npy')
@@ -269,6 +269,10 @@ def defMOLfeatures(MF,
                 return result
             # for CD in np.linspace(0, 1, 50):
             # pmi = np.flipud(d.isotope_images('C13H8O6', '+H')[0]).ravel() #TODO small hack, remove it after
+            config = {
+                'graphql_url': 'http://staging.metaspace2020.eu/graphql',
+                'moldb_url': 'http://staging.metaspace2020.eu/mol_db/v1',
+                'jwt': None}
 
             sm = smau.SMInstance()
             d = sm.dataset(ds_name)
@@ -276,10 +280,10 @@ def defMOLfeatures(MF,
             if filter == 'correlation':
                 fdr = 0.5
                 results1 = sm.msm_scores([d], d.annotations(fdr, database='HMDB-v4'), db_name='HMDB-v4').T
-                results2 = sm.msm_scores([d], d.annotations(fdr, database='ChEBI'), db_name='ChEBI').T
+                # results2 = sm.msm_scores([d], d.annotations(fdr, database='ChEBI'), db_name='ChEBI').T
                 # results3 = sm.msm_scores([d], d.annotations(fdr, database='LIPID_MAPS'), db_name='LIPID_MAPS').T
-                results4 = sm.msm_scores([d], d.annotations(fdr, database='SwissLipids'), db_name='SwissLipids').T
-                results = pd.concat([results1, results2, results4]).drop_duplicates()
+                # results4 = sm.msm_scores([d], d.annotations(fdr, database='SwissLipids'), db_name='SwissLipids').T
+                results = pd.concat([results1]).drop_duplicates()
                 filter_results = []
                 for i in tqdm.tqdm(range(results.shape[0])):
                     row = results.reset_index().iloc[i,:]
@@ -709,7 +713,7 @@ def defMORPHfeatures(MF):
     feat_df_selected.set_index('ObjectNumber').to_csv(Fname + 'MORPHselectedData.csv')
     feat_df.set_index('ObjectNumber').to_csv(Fname + 'MORPHallData.csv')
 
-def mergeMORPHnMOL4cyt(MF, CDs, fetch_ann='offline',  tol_fact=0.2, filter = 'mean'):
+def mergeMORPHnMOL(MF, CDs=[0.75], fetch_ann='online', tol_fact=0.2, filter ='correlation', selection=False):
     """Merge molecular data from the cells analyzed with spaceM with their morphological features measured
     by CellProfiler. The matching is done using the values from Objectnumber'.
 
@@ -742,7 +746,11 @@ def mergeMORPHnMOL4cyt(MF, CDs, fetch_ann='offline',  tol_fact=0.2, filter = 'me
         MOLcsv_p = MF + 'Analysis/scAnalysis/Molecular_features/tol_fact={}/MOLallData.csv'.format(tol_fact)
     if fetch_ann == 'offline':
         MOLcsv_p = MF + 'Analysis/scAnalysis/Molecular_features/offline/MOLallData.csv'
-    MORPHcsv_p = MF + 'Analysis/scAnalysis/Morphological_features/MORPHselectedData.csv'
+
+    if selection:
+        MORPHcsv_p = MF + 'Analysis/scAnalysis/Morphological_features/MORPHselectedData.csv'
+    else:
+        MORPHcsv_p = MFA + 'CellProfilerAnalysis/Cells.csv'
 
     MOLdf = pd.read_csv(MOLcsv_p)
     # MOLdf_log = pd.DataFrame(columns= np.array(MOLdf.columns),data=np.nan_to_num(np.log10(MOLdf)))
@@ -751,19 +759,19 @@ def mergeMORPHnMOL4cyt(MF, CDs, fetch_ann='offline',  tol_fact=0.2, filter = 'me
     MORPHnMOL_df = MORPHnMOL_df.set_index('ObjectNumber').drop(['index'], axis=1)
     MORPHnMOL_df.to_csv(MF + 'Analysis/scAnalysis/MORPHnMOL.csv')
     # quick check
-    sns.regplot(MORPHnMOL_df.CellAreaPixel_lu, MORPHnMOL_df.Area, scatter_kws={"s": 80})
-    plt.axis('equal')
-    plt.xlabel('Cell Area computed from custom Pipeline')
-    plt.ylabel('Cell Area computed from CellProfiler')
-    plt.savefig(MF + 'Analysis/scAnalysis/AREA_index_check.png', psi=100)
-    plt.close('all')
-
-    sns.regplot(MORPHnMOL_df.fluoCellMean_lu, MORPHnMOL_df.Intensity_MEAN, scatter_kws={"s": 80})
+    # sns.regplot(MORPHnMOL_df.CellAreaPixel_lu, MORPHnMOL_df.Area, scatter_kws={"s": 80})
     # plt.axis('equal')
-    plt.xlabel('Fluo intensity computed from custom Pipeline')
-    plt.ylabel('Fluo intensity computed from CellProfiler')
-    plt.savefig(MF + 'Analysis/scAnalysis/FLUO_index_check.png', psi=100)
-    plt.close('all')
+    # plt.xlabel('Cell Area computed from custom Pipeline')
+    # plt.ylabel('Cell Area computed from CellProfiler')
+    # plt.savefig(MF + 'Analysis/scAnalysis/AREA_index_check.png', psi=100)
+    # plt.close('all')
+    #
+    # sns.regplot(MORPHnMOL_df.fluoCellMean_lu, MORPHnMOL_df.Intensity_MEAN, scatter_kws={"s": 80})
+    # # plt.axis('equal')
+    # plt.xlabel('Fluo intensity computed from custom Pipeline')
+    # plt.ylabel('Fluo intensity computed from CellProfiler')
+    # plt.savefig(MF + 'Analysis/scAnalysis/FLUO_index_check.png', psi=100)
+    # plt.close('all')
 
 def mapAnn2microCells(MF, MFA, csv_p, tf_obj,
                       labelled_cells_path, ds_index=10, draw_AM=False,
