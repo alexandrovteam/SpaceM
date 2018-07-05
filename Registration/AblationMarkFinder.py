@@ -37,7 +37,7 @@ def spotFinder(path, layer=3):
         return np.clip(arr, min, max)
 
     # img_i = plt.imread(path)
-    im = tiff.imread(im_p)
+    im = tiff.imread(path)
     if len(np.shape(im)) > 2:
         img_i = im[0, :, :]
     img = scale(img_i)
