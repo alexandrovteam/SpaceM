@@ -15,6 +15,7 @@ from scipy import ndimage
 from skimage.measure import label, regionprops
 import spaceM.ImageFileManipulation.FIJIcalls as fc
 from PIL import Image, ImageFile
+import tifffile as tiff
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 Image.MAX_IMAGE_PIXELS = None
 
@@ -35,7 +36,10 @@ def spotFinder(path, layer=3):
         """Clip array between min and max values"""
         return np.clip(arr, min, max)
 
-    img_i = plt.imread(path)
+    # img_i = plt.imread(path)
+    im = tiff.imread(im_p)
+    if len(np.shape(im)) > 2:
+        img_i = im[0, :, :]
     img = scale(img_i)
     contrast_min = np.mean(img) + 2*np.std(img)
     if contrast_min >=1: contrast_min=0.8
@@ -702,29 +706,32 @@ def regionGrowing(cIM, initPos, thresVal, maxDist):
 
     return x,y
 
-def regionGrowingAblationMarks(MFA):
+def regionGrowingAblationMarks(MFA, grow_thresh=0.2, blur=True, sigma=3):
 
     # MFA = 'E:\Experiments\TNFa_2.3_SELECTED\Analysis/'
     marks = np.load(MFA + 'gridFit/xye_clean2.npy')
     mark_check_p = MFA + 'gridFit/marks_check/PHASE_crop_bin1x1_window100.png'
-    img = plt.imread(mark_check_p)
+    img0 = plt.imread(mark_check_p)
     window=100
     cut_window = 50
     marks_s = np.zeros(np.shape(marks))
     marks_s[0, :] = marks[0, :] - np.min(marks[0, :]) + window
     marks_s[1, :] = marks[1, :] - np.min(marks[1, :]) + window
-    img_rgb = np.repeat(img[:, :, np.newaxis], 3, axis=2)
+    img_rgb = np.repeat(img0[:, :, np.newaxis], 3, axis=2)
     # marksMask = {}
     # for i in range(np.shape(marks_s)[1]):
     #     marksMask[str(i)] = {}
     #     marksMask[str(i)]['x'] = []
     #     marksMask[str(i)]['y'] = []
     marksMask = []
-
+    if blur:
+        img = ndimage.gaussian_filter(img0, sigma=sigma)
+    else:
+        img = img0
     for i in tqdm.tqdm(range(np.shape(marks_s)[1])):
         im_cut = img[int(marks_s[0, i]) - cut_window : int(marks_s[0, i]) + cut_window,
                  int(marks_s[1, i]) - cut_window:int(marks_s[1, i]) + cut_window]
-        thresh = np.percentile(im_cut, 95)
+        thresh = np.percentile(im_cut, 98)
         posX, posY = np.where(im_cut > thresh)
 
         if len(posX) == 0:
@@ -736,7 +743,7 @@ def regionGrowingAblationMarks(MFA):
 
         xi,yi = regionGrowing(cIM=im_cut,
                       initPos=[posY[ind][0], posX[ind][0]],
-                      thresVal=0.4,
+                      thresVal=grow_thresh,
                       maxDist=60)
 
         x = xi + marks[0, i] - cut_window
