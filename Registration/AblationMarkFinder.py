@@ -21,7 +21,7 @@ Image.MAX_IMAGE_PIXELS = None
 
 
 
-def spotFinder(path, layer=3):
+def spotFinder(path, layer=3, show_results=False):
     """Detect ablation marks on the tiled images. For details, see the paper.
     Args:
         path (str): path of the image to detect ablation marks on.
@@ -36,35 +36,32 @@ def spotFinder(path, layer=3):
         """Clip array between min and max values"""
         return np.clip(arr, min, max)
 
-    # img_i = plt.imread(path)
-    im = tiff.imread(path)
-    if len(np.shape(im)) > 2:
-        img_i = im[0, :, :]
+    img_i = plt.imread(path)
+    # im = tiff.imread(path)
+    # if len(np.shape(im)) > 2:
+    #     img_i = im[0, :, :]
     img = scale(img_i)
     contrast_min = np.mean(img) + 2*np.std(img)
     if contrast_min >=1: contrast_min=0.8
     img_2 = contrast(img, min=contrast_min)
-    # plt.imshow(img_2, cmap='gray')
+
+
 
     ff = np.fft.fft2(img_2)
     F1 = 20*np.log10(np.abs(np.fft.fftshift(ff)))
-    # plt.imshow(F1, cmap='gray')
+
 
     mask1 = F1 - ndimage.gaussian_filter(F1, sigma=15)
     mask1[mask1<0] = 0
-    # plt.imshow(mask1, cmap='gray')
+
 
     int_thresh = np.mean(mask1 + 3.5*np.std(mask1))
     struct = ndimage.generate_binary_structure(2,1)
     mask2 = ndimage.binary_dilation(mask1>int_thresh, structure=struct, iterations=20).astype(mask1.dtype)
-    # plt.imshow(mask2, cmap='gray')
-
     ff_masked = np.fft.fftshift(mask2)*ff
-    # F2 = 20 * np.log10(abs(np.fft.fftshift(ff_masked))+1)
-    # plt.imshow(F2, cmap='gray')
 
     freq_up = 0.6
-    freq_down = 0.0
+    freq_down = 0.1
     [N, M] = np.shape(img)
     dx = 1
     KX0 = (np.mod(1 / 2 + np.arange(0,M) / M, 1) - 1 / 2)
@@ -75,15 +72,50 @@ def spotFinder(path, layer=3):
     lpf = (KX * KX + KY * KY < freq_up ** 2)
     lpf2 = (KX * KX + KY * KY < freq_down ** 2)
     mix = lpf * ~lpf2
-    rec = np.real(np.fft.ifft2(mix * ff_masked))
+    mix_masked = mix * ff_masked
+    F2 = 20 * np.log10(abs(np.fft.fftshift(mix_masked)) + 1)
+    rec = np.real(np.fft.ifft2(mix_masked))
     rec = scale(rec)
     rec = contrast(rec, np.percentile(rec, 1), np.percentile(rec, 99))
-    # plt.imshow(rec)
 
     rec_bw = rec > np.mean(rec) + 2.5*np.std(rec)
     label_img = label(rec_bw, connectivity=rec_bw.ndim)
     props = regionprops(label_img)
     centroids = [[props[i].centroid[1],props[i].centroid[0]]  for i in range(len(props))]
+
+    if show_results:
+        def no_axis(ax):
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.get_xaxis().tick_bottom()
+            ax.get_yaxis().tick_left()
+            ax.set_xticks([])
+            ax.set_yticks([])
+            return ax
+
+        plt.figure(figsize=(18,9))
+        ax = no_axis(plt.subplot(241))
+        plt.imshow(img_i, cmap='gray')
+        no_axis(plt.subplot(245, sharex=ax, sharey=ax)), plt.imshow(img_2, cmap='gray')
+
+        ax1 = no_axis(plt.subplot(242))
+        plt.imshow(F1, cmap='gray')
+        no_axis(plt.subplot(246, sharex=ax1, sharey=ax1)), plt.imshow(F2, cmap='gray')
+
+        no_axis(plt.subplot(243, sharex=ax, sharey=ax)), plt.imshow(rec, cmap='gray')
+        no_axis(plt.subplot(247, sharex=ax, sharey=ax)), plt.imshow(rec_bw, cmap='gray')
+        x = [plt.scatter(x,y,100, color=[1,0,0]) for x,y in centroids]
+
+        no_axis(plt.subplot(248, sharex=ax, sharey=ax)), plt.imshow(img, cmap='gray')
+        x = [plt.scatter(x,y,100, color=[1,0,0]) for x,y in centroids]
+        plt.show()
+        plt.tight_layout()
+        ax.set_ylim([1000,1200])
+        ax.set_xlim([1000,1200])
+        ax1.set_ylim([1500,3000])
+        ax1.set_xlim([1500,3000])
+        # mng = plt.get_current_fig_manager()
+        # mng.window.showMaximized()
 
     return centroids
 
@@ -206,7 +238,7 @@ def GridFit(MF, optimization=False, manual_cleaning=True, MarkFinderFT=True):
             squared distance between the extrema of the theoretical grid and the ablation mark coordinates.
 
         """
-        rotation_deg, affine_lat, i, j = params
+        rotation_deg, affine_lat, i, j = paramsw
         x_spots, y_spots = create_grid(shape,rotation_deg,affine_lat,i, j)
         distances, coord = get_distance(x_spots,y_spots,xe,ye,1)
         top1, bottom1, right1, left1 = getExtrema(shape, x_spots, y_spots)
