@@ -15,12 +15,6 @@ def callCP(MFA, cp_p, cppipe_p):
 
      """
     # CP headless info https://github.com/CellProfiler/CellProfiler/wiki/Adapting-CellProfiler-to-a-LIMS-environment
-    file = open(MFA + 'CellProfilerAnalysis\input_files.txt', 'w')
-    file.write(MFA + 'CellProfilerAnalysis\img_t1_z1_c1.tif\n')
-    file.write(MFA + 'CellProfilerAnalysis\img_t1_z1_c2.tif\n')
-    file.write(MFA + 'CellProfilerAnalysis\img_t1_z1_c2_adjusted.tif\n')
-    file.write(MFA + 'CellProfilerAnalysis\img_t1_z1_c3_adjusted.tif')
-    file.close()
     call([cp_p,
           '-r',
           '-c',
@@ -30,7 +24,7 @@ def callCP(MFA, cp_p, cppipe_p):
           MFA + 'CellProfilerAnalysis\\', '--file-list',
           MFA + 'CellProfilerAnalysis\input_files.txt'])
 
-def  cellOutlines(FluoBrightfield_p, fluo_window, label_p, save_p):
+def  cellOutlines(FluoBrightfield_p, fluo_window, label_p, save_p, clusters=[], cluster_col=[], labels_OI = []):
     """Visualize the cell segmentation results from CellProfiler by drawing a black outline around the estimated cell
     boundaries.
 
@@ -41,20 +35,69 @@ def  cellOutlines(FluoBrightfield_p, fluo_window, label_p, save_p):
          save_p (str): path to the generated image with cells outlines
 
      """
-    labelI = plt.imread(label_p)
-    fluoI = plt.imread(FluoBrightfield_p)
+    if fluo_window > 0 :
+        labelI = plt.imread(label_p)[fluo_window:-fluo_window]
+        fluoI = plt.imread(FluoBrightfield_p)[fluo_window:-fluo_window]
+    else:
+        labelI = plt.imread(label_p)
+        fluoI = plt.imread(FluoBrightfield_p)
     values = np.unique(labelI)
     perimAll = np.zeros(np.shape(labelI))
     struct = ndimage.generate_binary_structure(2, 1)
+    FIC = fluoI#[fluo_window:-fluo_window]
+    if np.shape(labels_OI)[0] > 0:
+        label_list = labels_OI
+    else:
+        label_list = np.unique(labelI)
 
     for seed in tqdm.tqdm(values):
         BW = (labelI==seed)*1
-        if seed in labelI and seed >0:
-            erode = ndimage.binary_erosion(BW, structure=struct, iterations=1).astype(BW.dtype)
-            perimAll = perimAll + (BW-erode)
+        if seed in label_list and seed >0:
+            perim = BW - ndimage.binary_erosion(BW, structure=struct, iterations=1).astype(BW.dtype)
+            perim = ndimage.binary_dilation(perim, structure=struct, iterations=1).astype(BW.dtype)
+            # perimAll = perimAll + (BW-erode)
+            if np.shape(clusters)[0] > 0:
+                if seed in clusters[0]:
+                    color = cluster_col[clusters[1][clusters[0] == seed][0]]
+                else:
+                    color = [0,0,0]
+                FIC[perim == 1, :] = color
+            else:
+                color = [0,0,0]
+                FIC[perim == 1, :] = color
+    plt.imshow(FIC)
 
-    PAC = perimAll[fluo_window:-fluo_window]
+
+    PAC = perimAll#[fluo_window:-fluo_window]
     PAC_d = ndimage.binary_dilation(PAC, structure=struct, iterations=1).astype(BW.dtype)
-    FIC = fluoI[fluo_window:-fluo_window]
+
     CC = FIC*np.dstack([np.invert(PAC_d.astype('bool'))] * 3)
     plt.imsave(save_p, CC)
+
+def cellDistribution_MALDI(MF):
+    MFA = MF + 'Analysis/'
+    cellMask = tiff.imread(MFA + 'CellProfilerAnalysis/Labelled_cells.tif')
+    marksMask = np.load(MFA + 'Fiducials/transformedMarksMask.npy')
+    coordX, coordY = np.load(MFA + 'Fiducials/transformedMarks.npy')
+    window = 100
+
+    cellMask_bw_all = cellMask > 0
+    pmi = []  # Positive Mark Index
+    overLaps = []
+    for i in tqdm.tqdm(range(np.shape(marksMask)[0])):
+        status = 0
+        cell_mark_OL = 0
+        bi = []
+        for j in range(np.shape(marksMask[i][0])[0]):
+            if cellMask_bw_all[
+                int(marksMask[i][0][j] - np.min(coordX) + window), int(
+                    marksMask[i][1][j] - np.min(coordY) + window)]:
+                status = 1
+                cell_mark_OL += 1
+                # if status == 1:
+        pmi = np.append(pmi, status)
+        overLaps = np.append(overLaps, cell_mark_OL)
+
+    np.save(MFA + 'CellProfilerAnalysis/cellDistribution_MALDI.npy', [pmi, overLaps])
+
+
