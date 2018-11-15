@@ -75,6 +75,14 @@ def  cellOutlines(FluoBrightfield_p, fluo_window, label_p, save_p, clusters=[], 
     plt.imsave(save_p, CC)
 
 def cellDistribution_MALDI(MF):
+    """Maps the distribution of the cells over the sampled area by MALDI as a binary matrix. Can also be called an On/Off
+        sample mask, where pixels with a value of 1 are off sample (the corresponding ablation mark of that MALDI pixel
+        does not overlap with a cell) and a value of 1 are ON sample (there is overlap).
+
+     Args:
+         MF (str): path to the Main Folder.
+
+     """
     MFA = MF + 'Analysis/'
     cellMask = tiff.imread(MFA + 'CellProfilerAnalysis/Labelled_cells.tif')
     marksMask = np.load(MFA + 'Fiducials/transformedMarksMask.npy')
