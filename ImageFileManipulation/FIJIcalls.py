@@ -95,18 +95,20 @@ def callFIJImergeChannels(base_path,
     script_file_p = base_path + 'mergeRedGray_script.txt'
     base = os.path.splitext(script_file_p)[0]
 
-    if not os.path.exists(base_path + 'mergeRedGray_script.ijm' ):
-        out_file2 = open(script_file_p , 'w')
-        out_file2.write(string1 + 'run("Merge Channels...", "{}")\
-        \nsaveAs("PNG", "{}");\
-        \nrun("Quit");'\
-                        .format(string2,
-                                base_path.replace('/', '\\\\') + save_filename))
-        out_file2.close()
+    if os.path.exists(base_path + 'mergeRedGray_script.ijm'):
+        os.remove(base_path + 'mergeRedGray_script.ijm')
 
-        if os.path.exists(base + ".ijm"):
-            os.remove(base + ".ijm")
-        os.rename(script_file_p, base + ".ijm")
+    out_file2 = open(script_file_p , 'w')
+    out_file2.write(string1 + 'run("Merge Channels...", "{}")\
+    \nsaveAs("PNG", "{}");\
+    \nrun("Quit");'\
+                    .format(string2,
+                            base_path.replace('/', '\\\\') + save_filename))
+    out_file2.close()
+
+    if os.path.exists(base + ".ijm"):
+        os.remove(base + ".ijm")
+    os.rename(script_file_p, base + ".ijm")
     call([fiji_path, '-macro', base.replace('/', '\\') + ".ijm"])#, stdout = PIPE)
 
 def callFIJIstitch(dir_fliplr):

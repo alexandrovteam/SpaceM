@@ -36,11 +36,11 @@ def penMarksFeatures(MF, prefix, whole_image=True):
         hist, bins_center = exposure.histogram(im)
 
         plt.plot(bins_center, hist, lw=2)
-        plt.axvline(val, color='k', ls='--', label='Otsu')
+        plt.axvline(val, color='w', ls='--', label='Threshold')
         plt.yscale('log')
         plt.xlabel('Pixel intensities')
         plt.ylabel('Log10(counts)')
-        plt.title('Mean- std/2')
+        # plt.title('Mean- std/2')
         plt.legend()
         plt.savefig(MF + 'Analysis/Fiducials/' + prefix + '_histogram.png')
         plt.close('all')
@@ -170,19 +170,19 @@ def fiducialsAlignment(MFA):
     postX_redu = postX[::post_den]#reduces optimizer computation time
     #TODO --> need to evaluate impact on alignment precision
     postY_redu = postY[::post_den]
-    print('post features length = {}'.format(np.shape(postX_redu)))
+    # print('post features length = {}'.format(np.shape(postX_redu)))
 
     pre_den = int(np.round(np.shape(preX)[0] / n_features))
     preX_redu = preX[::pre_den]
     preY_redu = preY[::pre_den]
-    print('pre features length = {}'.format(np.shape(preX_redu)))
+    # print('pre features length = {}'.format(np.shape(preX_redu)))
 
     minF = basinhopping(err_func, x0=(0, 0, 0 ),
                         niter=1, T=1.0, stepsize=10,
                         minimizer_kwargs={'args': ((preX_redu, preY_redu, postX_redu, postY_redu))},
                         take_step=None, accept_test=None, callback=None, interval=50, disp=True,
                         niter_success=1)
-    print(minF)
+    # print(minF)
 
     # #Case of 180deg rotation:
     # deg = 180
@@ -200,7 +200,7 @@ def fiducialsAlignment(MFA):
     transX = minF.x[0]
     transY = minF.x[1]
     rot = minF.x[2]
-        # scale = minF.x[3]
+    # scale = minF.x[3]
     #     print('rot = 0 deg')
     # else:
     #     transX = minF_rot.x[0]
@@ -252,13 +252,14 @@ def TransformMarks(MFA):
                 print('empty')
         np.save(MFA + '/Fiducials/transformedMarksMask.npy', tfMarksMask)
 
+    tfMarksMask = np.array(tfMarksMask)
     penmarks = np.load(MFA + 'Fiducials/preXYpenmarks.npy')
-    plt.figure(figsize=[50,100])
+    plt.figure(figsize=[50,25])
     plt.scatter(penmarks[0,:], penmarks[1,:], 1, c='k')
     plt.axis('equal')
     for i in range(np.shape(tfMarksMask)[0]):
-        if np.shape(tfMarksMask[i][0].T)[0] > 1:
-            plt.scatter(tfMarksMask[i][0].T, tfMarksMask[i][1].T, 1, 'r')
+        if np.shape(tfMarksMask[i][0])[0] > 1:
+            plt.scatter(tfMarksMask[i][0], tfMarksMask[i][1], 1, 'r')
     plt.scatter(X, Y, 1, c='g')
     plt.savefig(MFA + '/Fiducials/registration_result.png', dpi=100)
     plt.close('all')

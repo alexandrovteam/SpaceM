@@ -1,2 +1,2 @@
-from . import manifoldAnalysis, scAnalysis, Segmentation
-__all__ = [manifoldAnalysis, scAnalysis, Segmentation]
+from . import manifoldAnalysis, scAnalysis, Segmentation, scAnalysis_refactored
+__all__ = [manifoldAnalysis, scAnalysis, Segmentation, scAnalysis_refactored]

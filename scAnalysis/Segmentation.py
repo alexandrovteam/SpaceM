@@ -4,6 +4,7 @@ import numpy as np
 import tqdm
 from scipy import ndimage
 
+
 def callCP(MFA, cp_p, cppipe_p):
     """Call CellProfiler (http://cellprofiler.org/) to perform cell segmentation. CellProfiler segmentation pipeline
     is in the spaceM folder with the '.cppipe' extension.
@@ -23,6 +24,7 @@ def callCP(MFA, cp_p, cppipe_p):
           '-o',
           MFA + 'CellProfilerAnalysis\\', '--file-list',
           MFA + 'CellProfilerAnalysis\input_files.txt'])
+
 
 def  cellOutlines(FluoBrightfield_p, fluo_window, label_p, save_p, clusters=[], cluster_col=[], labels_OI = []):
     """Visualize the cell segmentation results from CellProfiler by drawing a black outline around the estimated cell
@@ -73,6 +75,46 @@ def  cellOutlines(FluoBrightfield_p, fluo_window, label_p, save_p, clusters=[], 
 
     CC = FIC*np.dstack([np.invert(PAC_d.astype('bool'))] * 3)
     plt.imsave(save_p, CC)
+
+
+def  cellOutlines_fast(FluoBrightfield_p, fluo_window, label_p, save_p, clusters=[], cluster_col=[], labels_OI = []):
+    """Visualize the cell segmentation results from CellProfiler by drawing a black outline around the estimated cell
+    boundaries.
+
+     Args:
+         FluoBrightfield_p (str): path to image to draw the cells outlines on.
+         fluo_window (int): number of pixels surrounding the frame of interest
+         label_p (str): path to the label image created by CellProfiler
+         save_p (str): path to the generated image with cells outlines
+
+     """
+    if fluo_window > 0 :
+        labelI = plt.imread(label_p)[fluo_window:-fluo_window]
+        fluoI = plt.imread(FluoBrightfield_p)[fluo_window:-fluo_window]
+    else:
+        labelI = plt.imread(label_p)
+        fluoI = plt.imread(FluoBrightfield_p)
+
+    values = np.unique(labelI)
+    perimAll = np.zeros(np.shape(labelI)).astype('uint8')
+    struct = ndimage.generate_binary_structure(2, 1)
+    FIC = fluoI#[fluo_window:-fluo_window]
+    if np.shape(labels_OI)[0] > 0:
+        label_list = labels_OI
+    else:
+        label_list = np.unique(labelI)
+
+    for seed in tqdm.tqdm(values):
+        BW = (labelI==seed)
+        BW = BW.astype('uint8')
+        if seed in label_list and seed > 0:
+            perim = BW - ndimage.binary_erosion(BW, structure=struct, iterations=1).astype(BW.dtype)
+            perimAll = perimAll + perim
+
+    perimAll_d = ndimage.binary_dilation(perimAll, structure=struct, iterations=1).astype(BW.dtype)
+    CC = FIC*np.dstack([np.invert(perimAll_d.astype('bool'))] * 3)
+    plt.imsave(save_p, CC)
+
 
 def cellDistribution_MALDI(MF):
     """Maps the distribution of the cells over the sampled area by MALDI as a binary matrix. Can also be called an On/Off

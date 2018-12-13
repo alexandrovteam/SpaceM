@@ -181,7 +181,7 @@ tol_fact = -0.2
 # for offline fetching: need to specify annotations, datasets ids
 scSc.defMOLfeatures(MF, tf_obj=ion2fluoTF, CDs=CDs, norm_method='weighted_mean_sampling_area_MarkCell_overlap_ratio_sampling_area',
                     fetch_ann=fetch_ann, tol_fact=tol_fact, filter = filter)
-scSc.mergeMORPHnMOL4cyt(MF, CDs=CDs, fetch_ann=fetch_ann, tol_fact=tol_fact, filter = filter)
+scSc.mergeMORPHnMOL(MF, CDs=CDs, fetch_ann=fetch_ann, tol_fact=tol_fact, filter = filter)
 scMa.tSNEgen(MF, CDs=CDs, metric='chebyshev', fetch_ann=fetch_ann,
              tol_fact=tol_fact, filter = filter)
 

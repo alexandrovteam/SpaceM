@@ -1,5 +1,6 @@
 # from pyimzml.ImzMLParser import ImzMLParser, getionimage
-from sm_analytics_python.sm_annotation_utils import sm_annotation_utils as smau
+# from sm_analytics_python.sm_annotation_utils import sm_annotation_utils as smau
+from metaspace import sm_annotation_utils as smau
 import numpy as np
 import csv
 import glob, os
@@ -76,16 +77,17 @@ def annotationSM2CSV(MFA, MFI, fdr, nbin, radius, tf_obj):
         ind = 0
         for i, row in enumerate(results.reset_index().itertuples()):
             images = d.isotope_images(row.formula, row.adduct)
-            print(row.formula)
+            # print(row.formula)
             data.append(list(np.append(row[1], tf_obj(images[0]).ravel())))
             ind += 1
         return data
 
-    config = {
-    'graphql_url': 'http://staging.metaspace2020.eu/graphql',
-    'moldb_url': 'http://staging.metaspace2020.eu/mol_db/v1',
-    'jwt': None}
+    # config = {
+    # 'graphql_url': 'http://staging.metaspace2020.eu/graphql',
+    # 'moldb_url': 'http://staging.metaspace2020.eu/mol_db/v1',
+    # 'jwt': None}
     sm = smau.SMInstance()
+    sm.login(email='luca.rappez@embl.de', password='Zeppar12')
 
     os.chdir(MFI + 'MALDI/')
     ds_name = glob.glob('*.imzML')[0].replace('.imzML', '')
@@ -95,4 +97,15 @@ def annotationSM2CSV(MFA, MFI, fdr, nbin, radius, tf_obj):
     predata = preCSVdatagen(MFA + 'Fiducials/transformedMarks.npy', radius, nbin, PlainFirst=False)
     data_csv = CSVdatagen(predata, results, d)
     writeCSV(path = MFA + '/ili/sm_annotation_detections.csv', data = data_csv)
+
+    # MF = 'E:/Experiments/20171106_Hepa_Nov_ANALYSIS/F1/'
+    # MFA = MF + 'Analysis/'
+    # MFI = MF + 'Input/'
+    #
+    # tf_obj = ion2fluoTF
+    # fdr=0.2
+    # nbin=1
+    # radius=20
+
+
 
