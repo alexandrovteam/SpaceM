@@ -324,12 +324,13 @@ def GridFit(MF, optimization=False, manual_cleaning=True, MarkFinderFT=True):
             pix_size (float): pixel size in um.
 
         """
-        txt_file = codecs.open(MFI + '/Microscopy/postMALDI/out.txt', 'r','utf-16')
+        txt_file = codecs.open(MFI + '/Microscopy/postMALDI/out.txt', 'r', 'utf-16')
         for row in txt_file:
             if row.startswith('Calibration'):
+                print(row)
                 pix_size = float(row.strip().split()[2].replace(',', '.'))
-            else:
-                pix_size = 0.73
+            # else:
+            #     pix_size = 0.73
         return pix_size
 
     def estimateAngle(xe,  ye, shape, MFA, Figures=True):
