@@ -27,24 +27,27 @@ def PixFliplr(tf, file_path, MFAspm):
             # a = (a/float(np.max(a)))*16385.0
             if np.shape(a.shape)[0] == 2:
                 n_chan=1
-                b = np.zeros((np.max(a.shape), np.max(a.shape)),
+                b0 = np.zeros((np.max(a.shape), np.max(a.shape)),
                              dtype=np.uint16)  # lazy hack --> restricts to squared images
                 # b.shape = 1, 1, 1, a.shape[0], a.shape[1], 1
-                b[:, :] = tf(a[:, :])
+                b0[:, :] = tf(a[:, :])
             else:
-                n_chan = a.shape[0]
-                b = np.zeros((n_chan, np.max(a.shape), np.max(a.shape)), dtype=np.uint16) # lazy hack --> restricts to squared images
+                if not os.path.exists(MFAspm + 'other_channels/'):
+                    os.mkdir(MFAspm + 'other_channels/')
+                b0 = tf(a[0, :, :])
+                n_chan = a.shape[0]-1
+                b = np.zeros((n_chan, a.shape[1], a.shape[2]), dtype=np.uint16) # lazy hack --> restricts to squared images
                 # b.shape =  n_chan, a.shape[1], a.shape[2], 1, 1 # dimensions in XYCZT order
-                for i in range(n_chan):
-                    b[i, :, :] = tf(a[i, :, :])
 
-            tiff.imsave(MFAspm + item,  b)
-            # plt.imsave(arr=b, fname=MFAspm + item)
-            # fi.write_multipage(b, MFAspm + item)
-            # io.imsave(MFAspm + item, b)
+                for i in range(n_chan):
+                    b[i, :, :] = tf(a[i+1, :, :])
+
+                tiff.imsave(MFAspm + 'other_channels/' + item, b)
+
+            tiff.imsave(MFAspm + item, b0)
+
             tif_files.append(item)
-            # print('Processed Image # {}'.format(ind))
-            ind  = ind+1
+            ind = ind+1
     return tif_files
 
 def crop2coords(coords_p, img_p, save_p, window):

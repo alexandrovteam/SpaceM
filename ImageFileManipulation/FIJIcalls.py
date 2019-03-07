@@ -5,6 +5,7 @@ import numpy as np
 from subprocess import call
 import math
 import pandas as pd
+from shutil import copyfile
 
 fiji_path = pd.read_json(os.path.dirname(spaceM.__file__) + '\\paths.json')['Fiji path'].as_matrix()[0]
 
@@ -44,8 +45,8 @@ def TileConfFormat(path, dir_fliplr, tif_files):
                     # print(row.strip().split('\t'))
                     data.append(row.strip().split('\t'))
                     data[i][0] = str(i+1).zfill(n_zfill)
-                    data[i][1] = float(data[i][1].replace(',','.'))
-                    data[i][2] = float(data[i][2].replace(',','.'))
+                    data[i][1] = float(data[i][1].replace(',', '.')) / 0.65
+                    data[i][2] = float(data[i][2].replace(',', '.')) / 0.65
                     out_file.write(base + '{}.tif; ; ({}, {})\n'.format(data[i][0],data[i][1],data[i][2]))
                     # re.findall('^(.*)(\d{3})$', 'seq000_XY120')
                     # print i
@@ -136,6 +137,27 @@ def callFIJIstitch(dir_fliplr):
         os.remove(base + ".ijm")
     os.rename(script_file_p, base + ".ijm")
     call([fiji_path, '-macro', base.replace('/', '\\') + ".ijm"])#, stdout = PIPE)
+    # os.remove('C:\\Users\Luca\AppData\Local\Temp\org.scijava.jython.shaded.jline_2_5_3.dll')
+
+def callFIJIstitch_noCompute(dir_in, dir_out):
+    copyfile(src=dir_out+'TileConfiguration.registered.txt', dst=dir_in+'TileConfiguration.registered.txt')
+    copyfile(src=dir_out+'img_t1_z1_c1', dst=dir_out+'img_t1_z1_c0')
+
+    script_file_p = dir_in + 'stitch_script_2.txt'
+    out_file2 = open(script_file_p, 'w')
+    out_file2.write('run("Grid/Collection stitching", "type=[Positions from file] order=[Defined by TileConfiguration] ' \
+    'directory={} layout_file=TileConfiguration.registered.txt ' \
+    'fusion_method=[Linear Blending] regression_threshold=0.30 max/avg_displacement_threshold=2.50 absolute_displacement_threshold=3.50 ' \
+    'computation_parameters=[Save computation time (but use more RAM)] image_output=[Write to disk] ' \
+    'output_directory={}");'
+                    '\nrun("Quit");'
+                    .format(dir_in.replace('/', '\\\\'),
+                            dir_out.replace('/', '\\\\')))
+
+    out_file2.close()
+    base = os.path.splitext(script_file_p)[0]
+    os.rename(script_file_p, base + ".ijm")
+    call(['C:\\Users\\rappez\Documents\Fiji\ImageJ-win64.exe', '-macro', base.replace('/', '\\') + ".ijm"])#, stdout = PIPE)
     # os.remove('C:\\Users\Luca\AppData\Local\Temp\org.scijava.jython.shaded.jline_2_5_3.dll')
 
 def readTileConfReg(dir_fliplr):
