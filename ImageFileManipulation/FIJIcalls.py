@@ -6,8 +6,9 @@ from subprocess import call
 import math
 import pandas as pd
 from shutil import copyfile
+import json
 
-fiji_path = pd.read_json(os.path.dirname(spaceM.__file__) + '\\paths.json')['Fiji path'].as_matrix()[0]
+fiji_path = pd.read_json(os.path.dirname(spaceM.__file__) + '\\paths.json')['Fiji path'].values
 
 def TileConfFormat(path, dir_fliplr, tif_files):
     """Extract the microscope motor stage coordinates at each frame from the metadata text file from the Nikon
@@ -45,8 +46,8 @@ def TileConfFormat(path, dir_fliplr, tif_files):
                     # print(row.strip().split('\t'))
                     data.append(row.strip().split('\t'))
                     data[i][0] = str(i+1).zfill(n_zfill)
-                    data[i][1] = float(data[i][1].replace(',', '.')) / 0.65
-                    data[i][2] = float(data[i][2].replace(',', '.')) / 0.65
+                    data[i][1] = float(data[i][1].replace(',', '.')) / 0.73
+                    data[i][2] = float(data[i][2].replace(',', '.')) / 0.73
                     out_file.write(base + '{}.tif; ; ({}, {})\n'.format(data[i][0],data[i][1],data[i][2]))
                     # re.findall('^(.*)(\d{3})$', 'seq000_XY120')
                     # print i

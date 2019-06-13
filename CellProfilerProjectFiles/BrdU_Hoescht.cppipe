@@ -39,26 +39,26 @@ NamesAndTypes:[module_num:3|svn_version:\'Unknown\'|variable_revision_number:8|s
     Relative pixel spacing in X:1.0
     Relative pixel spacing in Y:1.0
     Relative pixel spacing in Z:1.0
-    Select the rule criteria:and (file does contain "c3")
-    Name to assign these images:OrigBlue
+    Select the rule criteria:and (file does eq "img_t1_z1_c1.tif")
+    Name to assign these images:brdu_quantif
     Name to assign these objects:Cell
     Select the image type:Grayscale image
     Set intensity range from:Image metadata
     Maximum intensity:255.0
-    Select the rule criteria:and (file does contain "c1")
-    Name to assign these images:OrigGreen
+    Select the rule criteria:and (file does eq "img_t1_z1_c1_adj.tif")
+    Name to assign these images:brdu_segmentation
     Name to assign these objects:Nucleus
     Select the image type:Grayscale image
     Set intensity range from:Image metadata
     Maximum intensity:255.0
-    Select the rule criteria:and (file does contain "c2.tif")
-    Name to assign these images:OrigRed_highDR
+    Select the rule criteria:and (file does eq "img_t2_z1_c1.tif")
+    Name to assign these images:hoescht_quantif
     Name to assign these objects:Cytoplasm
     Select the image type:Grayscale image
     Set intensity range from:Image metadata
     Maximum intensity:255.0
-    Select the rule criteria:and (file does contain "c2_adjusted")
-    Name to assign these images:OrigRed_lowDR
+    Select the rule criteria:and (file does eq "img_t2_z1_c1_adj.tif")
+    Name to assign these images:hoescht_segmentation
     Name to assign these objects:Speckle
     Select the image type:Grayscale image
     Set intensity range from:Image bit-depth
@@ -70,7 +70,7 @@ Groups:[module_num:4|svn_version:\'Unknown\'|variable_revision_number:2|show_win
     Metadata category:None
 
 IdentifyPrimaryObjects:[module_num:5|svn_version:\'Unknown\'|variable_revision_number:13|show_window:False|notes:\x5B\'Identify the nuclei from the nuclear stain image. Some manual adjustment of the smoothing filter size and maxima supression distance is required to optimize segmentation.\'\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
-    Select the input image:OrigBlue
+    Select the input image:hoescht_segmentation
     Name the primary objects to be identified:Nuclei
     Typical diameter of objects, in pixel units (Min,Max):9,30
     Discard objects outside the diameter range?:Yes
@@ -104,11 +104,11 @@ IdentifyPrimaryObjects:[module_num:5|svn_version:\'Unknown\'|variable_revision_n
     # of deviations:2
     Thresholding method:Otsu
 
-MeasureObjectSizeShape:[module_num:6|svn_version:\'Unknown\'|variable_revision_number:1|show_window:False|notes:\x5B\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:False|wants_pause:False]
+MeasureObjectSizeShape:[module_num:6|svn_version:\'Unknown\'|variable_revision_number:1|show_window:False|notes:\x5B\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
     Select objects to measure:Nuclei
     Calculate the Zernike features?:Yes
 
-FilterObjects:[module_num:7|svn_version:\'Unknown\'|variable_revision_number:8|show_window:False|notes:\x5B\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:False|wants_pause:False]
+FilterObjects:[module_num:7|svn_version:\'Unknown\'|variable_revision_number:8|show_window:False|notes:\x5B\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
     Select the objects to filter:Nuclei
     Name the output objects:FilteredBlue
     Select the filtering mode:Measurements
@@ -130,7 +130,7 @@ IdentifySecondaryObjects:[module_num:8|svn_version:\'Unknown\'|variable_revision
     Select the input objects:Nuclei
     Name the objects to be identified:Cells
     Select the method to identify the secondary objects:Watershed - Image
-    Select the input image:OrigRed_lowDR
+    Select the input image:brdu_segmentation
     Number of pixels by which to expand the primary objects:10
     Regularization factor:0.05
     Discard secondary objects touching the border of the image?:No
@@ -141,13 +141,13 @@ IdentifySecondaryObjects:[module_num:8|svn_version:\'Unknown\'|variable_revision
     Threshold strategy:Adaptive
     Thresholding method:Otsu
     Threshold smoothing scale:1.3
-    Threshold correction factor:0.3
+    Threshold correction factor:1.3
     Lower and upper bounds on threshold:0,1
     Manual threshold:0
     Select the measurement to threshold with:None
     Two-class or three-class thresholding?:Two classes
     Assign pixels in the middle intensity class to the foreground or the background?:Foreground
-    Size of adaptive window:100
+    Size of adaptive window:50
     Lower outlier fraction:0.05
     Upper outlier fraction:0.05
     Averaging method:Mean
@@ -157,21 +157,20 @@ IdentifySecondaryObjects:[module_num:8|svn_version:\'Unknown\'|variable_revision
 
 MeasureObjectSizeShape:[module_num:9|svn_version:\'Unknown\'|variable_revision_number:1|show_window:False|notes:\x5B\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
     Select objects to measure:Cells
-    Select objects to measure:Nuclei
     Calculate the Zernike features?:Yes
 
 MeasureObjectIntensity:[module_num:10|svn_version:\'Unknown\'|variable_revision_number:3|show_window:False|notes:\x5B\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
     Hidden:2
-    Select an image to measure:OrigBlue
-    Select an image to measure:OrigRed_highDR
+    Select an image to measure:brdu_quantif
+    Select an image to measure:hoescht_quantif
     Select objects to measure:Nuclei
     Select objects to measure:Cells
 
 MeasureObjectNeighbors:[module_num:11|svn_version:\'Unknown\'|variable_revision_number:2|show_window:False|notes:\x5B\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
     Select objects to measure:Cells
     Select neighboring objects to measure:Cells
-    Method to determine neighbors:Adjacent
-    Neighbor distance:5
+    Method to determine neighbors:Within a specified distance
+    Neighbor distance:137
     Retain the image of objects colored by numbers of neighbors?:No
     Name the output image:ObjectNeighborCount
     Select colormap:Default

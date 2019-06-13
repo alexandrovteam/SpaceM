@@ -42,7 +42,7 @@ def  cellOutlines(FluoBrightfield_p, fluo_window, label_p, save_p, clusters=[], 
         fluoI = plt.imread(FluoBrightfield_p)[fluo_window:-fluo_window]
     else:
         labelI = plt.imread(label_p)
-        fluoI = plt.imread(FluoBrightfield_p)
+        fluoI = plt.imread(FluoBrightfield_p)[:,:,:3]
     values = np.unique(labelI)
     perimAll = np.zeros(np.shape(labelI))
     struct = ndimage.generate_binary_structure(2, 1)
@@ -52,6 +52,8 @@ def  cellOutlines(FluoBrightfield_p, fluo_window, label_p, save_p, clusters=[], 
     else:
         label_list = np.unique(labelI)
 
+    cluster_cell_labels = np.array(clusters[0])
+    cluster_cell_values = np.array(clusters[1])
     for seed in tqdm.tqdm(values):
         BW = (labelI==seed)*1
         if seed in label_list and seed >0:
@@ -59,8 +61,9 @@ def  cellOutlines(FluoBrightfield_p, fluo_window, label_p, save_p, clusters=[], 
             perim = ndimage.binary_dilation(perim, structure=struct, iterations=1).astype(BW.dtype)
             # perimAll = perimAll + (BW-erode)
             if np.shape(clusters)[0] > 0:
-                if seed in clusters[0]:
-                    color = cluster_col[clusters[1][clusters[0] == seed][0]]
+                if seed in cluster_cell_labels:
+                    cluster_ind = np.array([cluster_cell_labels == seed][0])
+                    color = cluster_col[cluster_cell_values[cluster_ind][0]]
                 else:
                     color = [0,0,0]
                 FIC[perim == 1, :] = color
@@ -112,8 +115,11 @@ def  cellOutlines_fast(FluoBrightfield_p, fluo_window, label_p, save_p, clusters
             perimAll = perimAll + perim
 
     perimAll_d = ndimage.binary_dilation(perimAll, structure=struct, iterations=1).astype(BW.dtype)
-    CC = FIC*np.dstack([np.invert(perimAll_d.astype('bool'))] * 3)
-    plt.imsave(save_p, CC)
+    if len(np.shape(FIC)) >2:
+        CC = FIC*np.dstack([np.invert(perimAll_d.astype('bool'))] * 3)
+    else:
+        CC = FIC * np.invert(perimAll_d.astype('bool'))
+    plt.imsave(save_p, CC, cmap='gray')
 
 
 def cellDistribution_MALDI(MF):

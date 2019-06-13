@@ -25,7 +25,7 @@ from scipy import exp
 def crop_img(MF, im_p, #=MF+'Analysis/StitchedMicroscopy/postMALDI_FLR/img_t1_z1_c1',
              coords_p):#=MF+'Analysis/gridFit/AM_cropped_cropCoords.npy'):
     im = plt.imread(im_p)
-    coords = np.load(coords_p).item()
+    coords = np.load(coords_p, allow_pickle=True).item()
     im_crop = im[int(np.round(coords['topLeft'][1])): int(np.round(coords['bottomRight'][1])),
               int(np.round(coords['topLeft'][0])): int(np.round(coords['bottomRight'][0]))]
     # plt.imshow(im[10465:15560, 5011:10357])
@@ -56,7 +56,6 @@ def spotFinder(MF, path1, path2=None, matrix='DHB', show_results=True):
         path1 (str): path of the image to detect ablation marks on.
 
     """
-
     if matrix == 'DHB':
         img_i = DHB_prep(MF, path1, path2)
         img_2 = scale(contrast(scale(ndimage.gaussian_filter(img_i, sigma=6)), 0, 0.99))
@@ -74,16 +73,20 @@ def spotFinder(MF, path1, path2=None, matrix='DHB', show_results=True):
     mask1 = F1 - ndimage.gaussian_filter(F1, sigma=15)
     mask1[mask1<0] = 0
 
-    int_thresh = np.mean(mask1) + 4.2*np.std(mask1) #3.5 for DAN
+    int_thresh = np.mean(mask1) + 3.5*np.std(mask1) #3.5 for DAN
     struct = ndimage.generate_binary_structure(2,1)
-    mask2 = ndimage.binary_dilation(mask1>int_thresh, structure=struct, iterations=20).astype(mask1.dtype) #20 for DAN
-    mask2_blur = scale(ndimage.gaussian_filter(mask2, sigma=10)) #lower sigma means more grid but more leaking
+    mask2 = ndimage.binary_dilation(mask1>int_thresh, structure=struct, iterations=5).astype(mask1.dtype) #20 for DAN
+    mask2_blur = scale(ndimage.gaussian_filter(mask2, sigma=2)) #lower sigma means more grid but more leaking
     ff_masked = np.fft.fftshift(mask2_blur)*ff #mask_2 for DAN, mask2_blur for DHB
 
-    # plt.imshow(mask1)
+    plt.imshow(mask2_blur)
 
     freq_up = 0.6 #0.6 for DAN
-    freq_down = 0.05 #0 for DAN
+    freq_down = 0.0 #0 for DAN
+
+    # freq_up = 0.2 #0.6 for DAN
+    # freq_down = 0.0 #0 for DAN
+
     [N, M] = np.shape(img_2)
     dx = 1
     KX0 = (np.mod(1 / 2 + np.arange(0,M) / M, 1) - 1 / 2)
@@ -99,6 +102,8 @@ def spotFinder(MF, path1, path2=None, matrix='DHB', show_results=True):
     rec = np.real(np.fft.ifft2(mix_masked))
     rec = scale(rec) * 65535
     rec = contrast(rec, 0.1, 0.999)
+    plt.imshow(rec)
+
     tiff.imsave(MF + 'Analysis/gridFit/FT_filtered.tiff', rec.astype(np.uint16))
 
     # plt.subplot(121), plt.imshow(F2)
@@ -193,8 +198,26 @@ def MarkFinderFT(MF):
     # return allxScaled, allyScaled
     # eng.quit()
 
+def getPixSize(MFI):
+        """Reads the pixel size in um from the Nikon Ti E microscope (NIS elements software).
 
-def GridFit(MF, optimization=False, manual_cleaning=True, MarkFinderFT=True):
+        Args:
+            MFI (str): path to Main Folder Input.
+
+        Returns:
+            pix_size (float): pixel size in um.
+
+        """
+        txt_file = codecs.open(MFI + '/Microscopy/postMALDI/out.txt', 'r', 'utf-16')
+        for row in txt_file:
+            if row.startswith('Calibration'):
+                # print(row)
+                pix_size = float(row.strip().split()[2].replace(',', '.'))
+            # else:
+            #     pix_size = 0.73
+        return pix_size
+
+def GridFit(MF, optimization=False, manual_cleaning=True, MarkFinderFT=True, matrix='DAN'):
     """Fit a theoretical grid on the ablation marks coordinates to remove extra detections and re-index ablation marks
     uniformly.
 
@@ -314,25 +337,6 @@ def GridFit(MF, optimization=False, manual_cleaning=True, MarkFinderFT=True):
                 resY = float(m.group(0))
         return shape, resX, resY
 
-    def getPixSize(MFI):
-        """Reads the pixel size in um from the Nikon Ti E microscope (NIS elements software).
-
-        Args:
-            MFI (str): path to Main Folder Input.
-
-        Returns:
-            pix_size (float): pixel size in um.
-
-        """
-        txt_file = codecs.open(MFI + '/Microscopy/postMALDI/out.txt', 'r', 'utf-16')
-        for row in txt_file:
-            if row.startswith('Calibration'):
-                print(row)
-                pix_size = float(row.strip().split()[2].replace(',', '.'))
-            # else:
-            #     pix_size = 0.73
-        return pix_size
-
     def estimateAngle(xe,  ye, shape, MFA, Figures=True):
         """Estimate the relative angle between the ablation marks and the X axis.
         TODO: estimate in both X and Y and get average estimate. It might be more accurate
@@ -408,8 +412,11 @@ def GridFit(MF, optimization=False, manual_cleaning=True, MarkFinderFT=True):
                - np.sin(theta) * (ye - np.mean(ye))
         ye_r = np.mean(ye) + np.sin(theta) * (xe - np.mean(xe)) \
                + np.cos(theta) * (ye - np.mean(ye))
-        if manual_cleaning==True:
-            return xe_r, ye_r, xe_r, ye_r, xe, ye
+        if manual_cleaning:
+            xr_clean=xe_r
+            yr_clean=ye_r
+            xe_clean=xe
+            ye_clean=ye
         else:
             # remove outlier points to facilitate center estimation
             nbins_x = int((np.max(xe_r)-np.min(xe_r)) / resX)
@@ -427,36 +434,38 @@ def GridFit(MF, optimization=False, manual_cleaning=True, MarkFinderFT=True):
             ind2d = np.ravel([np.where(xe_r < tx_low)[0], np.where(xe_r > tx_high)[0], np.where(ye_r < ty_low)[0],
                               np.where(ye_r > ty_high)[0]])
             ind_cut = np.unique(list(itertools.chain.from_iterable(ind2d)))
+
             xr_clean = np.delete(xe_r, ind_cut)
             yr_clean = np.delete(ye_r, ind_cut)
             xe_clean = np.delete(xe, ind_cut)
             ye_clean = np.delete(ye, ind_cut)
+
+            plt.figure()
+            x_line, = plt.plot(b_x[:-1], c_x, 'r', label = 'X_projections')
+            thresh_x_line, = plt.plot(b_x[:-1], np.ones(np.shape(b_x[:-1])) * treshc_x, 'r', label='Threshold X')
+            y_line, = plt.plot(b_y[:-1], c_y, 'k', label = 'Y_projections')
+            thresh_y_line, = plt.plot(b_y[:-1], np.ones(np.shape(b_y[:-1])) * treshc_y, 'k', label='Threshold Y')
+            plt.legend(handles = [x_line, y_line, thresh_x_line, thresh_y_line])#, ['X projections', 'Y projections'])
+            plt.savefig(MFA + '/gridFit/XYprojections.png')
             # pics_ind_clean = np.delete(pics_ind, ind_cut)
-            if Figures == True:
-                plt.figure()
-                x_line, = plt.plot(b_x[:-1], c_x, 'r', label = 'X_projections')
-                thresh_x_line, = plt.plot(b_x[:-1], np.ones(np.shape(b_x[:-1])) * treshc_x, 'r', label='Threshold X')
-                y_line, = plt.plot(b_y[:-1], c_y, 'k', label = 'Y_projections')
-                thresh_y_line, = plt.plot(b_y[:-1], np.ones(np.shape(b_y[:-1])) * treshc_y, 'k', label='Threshold Y')
-                plt.legend(handles = [x_line, y_line, thresh_x_line, thresh_y_line])#, ['X projections', 'Y projections'])
-                plt.savefig(MFA + '/gridFit/XYprojections.png')
+        if Figures:
 
-                crop = np.load(MFA + 'gridFit/AM_cropped_cropCoords.npy').item()
-                minX = crop['topLeft'][0]
-                minY = crop['topLeft'][1]
-                xe_scaled = xe/pix_size - minY
-                ye_scaled = ye/pix_size - minX
-                xe_clean_scaled = xe_clean/pix_size - minY
-                ye_clean_scaled = ye_clean/pix_size - minX
-                plt.figure(figsize=(60,60))
-                plt.imshow(plt.imread(MFA + 'gridFit/AM_cropped.tif'), cmap='gray')
-                plt.scatter(ye_scaled, xe_scaled, 5, label='Input')
-                plt.scatter(ye_clean_scaled, xe_clean_scaled, 2, color=[0,1,0], label='Output - cleaned')
-                plt.savefig(MFA + '/gridFit/Cleaning_results.png', dpi=200)
-                plt.tight_layout()
-                plt.close('all')
+            crop = np.load(MFA + 'gridFit/AM_cropped_coords.npy', allow_pickle=True).item()
+            minX = crop['topLeft'][0]
+            minY = crop['topLeft'][1]
+            xe_scaled = xe/pix_size - minY
+            ye_scaled = ye/pix_size - minX
+            xe_clean_scaled = xe_clean/pix_size - minY
+            ye_clean_scaled = ye_clean/pix_size - minX
+            plt.figure(figsize=(60,60))
+            plt.imshow(plt.imread(MFA + 'gridFit/AM_cropped.tif'), cmap='gray')
+            plt.scatter(ye_scaled, xe_scaled, 5, label='Input')
+            plt.scatter(ye_clean_scaled, xe_clean_scaled, 2, color=[0,1,0], label='Output - cleaned')
+            plt.savefig(MFA + '/gridFit/Cleaning_results.png', dpi=200)
+            plt.tight_layout()
+            plt.close('all')
 
-            return xe_r, ye_r, xr_clean, yr_clean, xe_clean, ye_clean
+        return xe_r, ye_r, xr_clean, yr_clean, xe_clean, ye_clean
         #, pics_ind_clean
 
     def getExtrema(shape, xe_r, ye_r):
@@ -683,10 +692,10 @@ def GridFit(MF, optimization=False, manual_cleaning=True, MarkFinderFT=True):
         centroids = spotFinder(MF,
                                path1=MFA + 'gridFit/AM_cropped.tif',
                                path2=MFA + 'gridFit/AM_cropped_2.tif',
-                               matrix='DHB',
-                               show_results=False)  # TODO provide option to swtch to DAN at higher level
+                               matrix=matrix,
+                               show_results=True)  # TODO provide option to swtch to DAN at higher level
 
-        crop = np.load(MFA + 'gridFit/AM_cropped_cropCoords.npy').item()
+        crop = np.load(MFA + 'gridFit/AM_cropped_coords.npy', allow_pickle=True).item()
         minX = crop['topLeft'][0]
         minY = crop['topLeft'][1]
         dataPoints = np.zeros([i for i in reversed(np.shape(centroids))])
@@ -694,7 +703,7 @@ def GridFit(MF, optimization=False, manual_cleaning=True, MarkFinderFT=True):
         dataPoints[1, :] = centroids[:, 1] + minY
         np.save(MFA + 'gridFit/ablation_marks_XY.npy', dataPoints)
 
-    dataPoints = np.load(MFA + 'gridFit/ablation_marks_XY.npy')
+    dataPoints = np.load(MFA + 'gridFit/ablation_marks_XY.npy', allow_pickle=True)
     shape, resX, resY = getShapeRes(MFI)
     pix_size = getPixSize(MFI)
     xe = dataPoints[1]*pix_size
@@ -702,8 +711,14 @@ def GridFit(MF, optimization=False, manual_cleaning=True, MarkFinderFT=True):
     np.save(MFA + '/gridFit/metadata.npy', [shape, pix_size])
     rotation_esti = estimateAngle(xe, ye, shape, MFA, Figures = True)
     print('Angle estimation finished')  # \nEstimated rotation = {}deg\nData cleaning started ...'.format(rotation_esti)
-    xe_r, ye_r, xr_clean, yr_clean, xe_clean, ye_clean = cleanData(rotation_esti, resX, resY, xe, ye, tolerance = 100,
-                                                       manual_cleaning=False, Figures = True)
+    xe_r, ye_r, xr_clean, yr_clean, xe_clean, ye_clean = cleanData(rotation=rotation_esti,
+                                                                   resX=resX,
+                                                                   resY=resY,
+                                                                   xe=xe,
+                                                                   ye=ye,
+                                                                   tolerance=100,
+                                                                   manual_cleaning=True,
+                                                                   Figures=True)
     print('Data cleaning finished')  # \nCenter estimation started ...'
     center_x_esti, center_y_esti, top, bottom, right, left = estimateCenter(shape, xr_clean, yr_clean, MFA, Figures = True)
     print('Center estimation finished')  # \nCenter X = {}\nCenter Y = {}\nLattice Estimation started ...'.format(center_x_esti, center_y_esti)
@@ -757,7 +772,7 @@ def GridFit(MF, optimization=False, manual_cleaning=True, MarkFinderFT=True):
     xe_clean2 = xe_clean[coord]/pix_size
     ye_clean2 = ye_clean[coord]/pix_size
 
-    crop = np.load(MFA + 'gridFit/AM_cropped_cropCoords.npy').item()
+    crop = np.load(MFA + 'gridFit/AM_cropped_coords.npy', allow_pickle=True).item()
     minX = crop['topLeft'][0]
     minY = crop['topLeft'][1]
     xe_scaled = xe / pix_size - minY
@@ -927,15 +942,17 @@ def regionGrowingAblationMarks(MF, grow_thresh=0.35, blur=False, sigma=3, matrix
     np.save(MFA + 'gridFit/marksMask.npy', marksMask)
 
 
-def AM_filter(MF, n_std=4):
+def AM_filter(MF, n_std=4, manual_threshold=None):
 
     def gaus(x, a, x0, sigma):
         return a * exp(-(x - x0) ** 2 / (2 * sigma ** 2))
 
     MFA = MF + 'Analysis/'
+    MFI = MF + 'Input/'
+    pix_size = getPixSize(MFI)
     img_rgb_filter = plt.imread(MFA + 'gridFit/AM_segmentation.png')
-    marksMask = np.load(MFA + 'gridFit/marksMask.npy')
-    marks = np.load(MFA + 'gridFit/xye_clean2.npy')
+    marksMask = np.load(MFA + 'gridFit/marksMask.npy', allow_pickle=True)
+    marks = np.load(MFA + 'gridFit/xye_clean2.npy', allow_pickle=True)
     window = 100
     marks_s = np.zeros(np.shape(marks))
     marks_s[0, :] = marks[0, :] - np.min(marks[0, :]) + window
@@ -943,16 +960,26 @@ def AM_filter(MF, n_std=4):
     n_AM = len(marksMask)
 
     # img_rgb_filter = np.copy(img_rgb)
-    areas = [len(x) for x, y in marksMask]
+    areas = np.array([len(x) for x, y in marksMask])
     indexes = np.arange(n_AM)
 
     y, x = np.histogram(areas, 100)
     x = x[1:]
     mean = np.mean(areas)
     sigma = np.std(areas)
-    popt, pcov = curve_fit(gaus, x, y, p0=[1, mean, sigma])
-    AM_threshold = popt[1] + n_std*abs(popt[2])
-    AM_pass_indexes = [int(i) for i in indexes[areas < AM_threshold]]
+    if not manual_threshold:
+        popt, pcov = curve_fit(gaus, x, y, p0=[1, mean, sigma])
+        AM_threshold_up = popt[1] + n_std * abs(popt[2])
+        AM_threshold_down = popt[1] - n_std * abs(popt[2])
+    else:
+        AM_threshold_down = manual_threshold[0]
+        AM_threshold_up = manual_threshold[1]
+
+    AM_pass_indexes = []
+    for i in indexes:
+        if areas[i] < AM_threshold_up and areas[i] > AM_threshold_down:
+            AM_pass_indexes.append(int(i))
+    # AM_pass_indexes = [int(i) for i in indexes[areas < AM_threshold]]
 
     for i in range(n_AM):
         x_all, y_all = marksMask[i]
@@ -969,11 +996,13 @@ def AM_filter(MF, n_std=4):
     np.save(MFA + 'gridFit/AM_pass_filter.npy', AM_pass_indexes)
 
     plt.figure()
-    plt.plot(x, y, label='data')
-    plt.plot(x, gaus(x, *popt), label='fit')
-    plt.axvline(AM_threshold, label='threshold')
+    plt.plot(x*pix_size, y, label='data')
+    if not manual_threshold:
+        plt.plot(x*pix_size, gaus(x, *popt), label='fit')
+    plt.axvline(AM_threshold_up*pix_size, label='threshold')
+    plt.axvline(AM_threshold_down * pix_size, label='threshold')
     plt.legend()
-    plt.xlabel('AM area (n pixels)', fontsize=15)
+    plt.xlabel('AM area (um**2)', fontsize=15)
     plt.ylabel('Counts', fontsize=15)
     plt.savefig(MF + 'Analysis/gridFit/AM_filter.png')
     plt.close('all')

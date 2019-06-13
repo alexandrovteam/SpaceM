@@ -1,7 +1,7 @@
 [{
   "CellProfiler path":"C:\\Program Files (x86)\\CellProfiler\\CellProfiler.exe",
   "Fiji path":"C:\\Users\\rappez\\Documents\\Fiji\\ImageJ-win64.exe",
-  "CellProfiler pipeline path": "C:\\Users\\rappez\\Documents\\python_codebase\\spaceM\\CellProfilerProjectFiles\\Hepatocytes_segmentation.cppipe",
-  "CellProfiler project path": "C:\\Users\\rappez\\Documents\\python_codebase\\spaceM\\CellProfilerProjectFiles\\Hepatocytes_segmentation.cpproj",
-  "MF":"this is great"
+  "CellProfiler pipeline path": "C:\\Users\\rappez\\Documents\\python_codebase\\spaceM\\CellProfilerProjectFiles\\Hepatocytes_segmentation_nuclei.cppipe",
+  "CellProfiler project path": "C:\\Users\\rappez\\Documents\\python_codebase\\spaceM\\CellProfilerProjectFiles\\Hepatocytes_segmentation_nuclei.cpproj",
+  "MF":"F:/Experiments/20171106_Hepa_Nov_ANALYSIS_PAPER/F3/"
 }]

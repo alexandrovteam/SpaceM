@@ -60,9 +60,10 @@ def crop2coords(coords_p, img_p, save_p, window):
         img = tiff.imread(img_p)
     else:
         img = plt.imread(img_p)
-    tiff.imsave(save_p, img[np.min(X)-window:np.max(X)+window, np.min(Y)-window:np.max(Y)+window])
-    if window == 0:
-        scipy.misc.imsave(save_p, img[np.min(X)-window:np.max(X)+window, np.min(Y)-window:np.max(Y)+window])
+    # tiff.imsave(save_p, img[np.min(X)-window:np.max(X)+window, np.min(Y)-window:np.max(Y)+window], dtype='uint8')
+    scipy.misc.imsave(save_p, img[np.min(X) - window:np.max(X) + window, np.min(Y) - window:np.max(Y) + window])
+    # if window == 0:
+    #     scipy.misc.imsave(save_p, img[np.min(X)-window:np.max(X)+window, np.min(Y)-window:np.max(Y)+window])
 
 def crop2coords4CP(coords_p, imgF_p, saveF_p, window):
     X, Y = np.load(coords_p)
@@ -103,14 +104,16 @@ def imAdjQuantiles(pc, im_p, adj_p):
         pc_high = pc[1]
     else:
         print('Clipping percentile format is wrong, no clipping is performed \non image {}'.format(im_p))
-
-    img = scale(plt.imread(im_p))
+    if type(im_p) == str:
+        img = scale(plt.imread(im_p))
+    else:
+        img = scale(im_p)
     low_in = np.percentile(img, pc_low)
     high_in = np.percentile(img, pc_high)
-    adjusted = scale(np.clip(img, low_in, high_in)) * 255
+    adjusted = scale(np.clip(img, low_in, high_in)) * 65535
     # plt.imshow(adjusted)
     if adj_p == []:
         return adjusted
     else:
-        tiff.imsave(adj_p, adjusted.astype('uint8'))
+        tiff.imsave(adj_p, adjusted.astype('uint16'))
 

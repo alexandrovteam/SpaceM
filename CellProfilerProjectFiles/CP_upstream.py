@@ -5,11 +5,12 @@ import tifffile as tif
 import scipy.ndimage as scim
 from skimage.morphology import ball
 
-
 def scale(input):
     """Scale array between 0 and 1"""
     return (input - np.min(input)) / ((np.max(input) - np.min(input)))
-
+def contrast(arr, min, max=1.0):
+    """Clip array between min and max values"""
+    return np.clip(arr, np.percentile(arr, min*100), np.percentile(arr, max*100))
 
 def hepatocytes(MF):
 
@@ -116,4 +117,52 @@ def coculture_NIH(MF):
     file.write(MF + 'Analysis/CellProfilerAnalysis/img_t4_z1_c1.tif\n')
     file.write(MF + 'Analysis/CellProfilerAnalysis/img_t5_z1_c1.tif\n')
     file.close()
+
+def coculture_MH(MF):
+
+    spaceM.ImageFileManipulation.manipulations.imAdjQuantiles(pc=[1],
+                                                              im_p=MF + 'Analysis/CellProfilerAnalysis\img_t1_z1_c3.tif',
+                                                              adj_p=MF + 'Analysis/CellProfilerAnalysis\img_t1_z1_c3_adjusted.tif')
+    spaceM.ImageFileManipulation.manipulations.imAdjQuantiles(pc=[1],
+                                                              im_p=MF + 'Analysis/CellProfilerAnalysis\img_t1_z1_c0.tif',
+                                                              adj_p=MF + 'Analysis/CellProfilerAnalysis\img_t1_z1_c0_adjusted.tif')
+
+    #Make Probability map in ILASTIK from img_t1_z1_c3_adjusted.tif and save as prob.tif in the same CellProfilerAnalysis folder
+
+    bf = tif.imread(MF + 'Analysis/CellProfilerAnalysis\img_t1_z1_c0.tif')
+    prob = tif.imread(MF + 'Analysis/CellProfilerAnalysis\prob.tif')
+    ctfr = tif.imread(MF + 'Analysis/CellProfilerAnalysis\img_t1_z1_c3_adjusted.tif')
+
+    bf = bf.astype('int32')
+    dx = scim.sobel(bf, 1)  # horizontal derivative
+    dy = scim.sobel(bf, 0)  # vertical derivative
+    mag = np.hypot(dx, dy)
+
+    segm_in = scale(scale(ctfr) * scale(prob) + scale(mag)) * 255
+    tif.imsave(MF + 'Analysis/CellProfilerAnalysis\segmentation.tif', segm_in.astype('uint8'))
+
+    file = open(MF + 'Analysis/CellProfilerAnalysis/input_files.txt', 'w')
+    file.write(MF + 'Analysis/CellProfilerAnalysis/img_t1_z1_c1.tif\n')
+    file.write(MF + 'Analysis/CellProfilerAnalysis/img_t1_z1_c2.tif\n')
+    file.write(MF + 'Analysis/CellProfilerAnalysis/img_t1_z1_c3.tif\n')
+    file.write(MF + 'Analysis/CellProfilerAnalysis/segmentation.tif\n')
+    file.close()
+
+def BrdU(stitch_folder = r'Y:\rappez\20190523_BrdU_Hoesch_Hepa\FI1\stitch/'):
+
+    spaceM.ImageFileManipulation.manipulations.imAdjQuantiles(pc=[0.99],
+                                                              im_p=stitch_folder + 'img_t1_z1_c1.tif',
+                                                              adj_p=stitch_folder + 'img_t1_z1_c1_adj.tif')
+
+    spaceM.ImageFileManipulation.manipulations.imAdjQuantiles(pc=[0.99],
+                                                              im_p=stitch_folder + 'img_t2_z1_c1.tif',
+                                                              adj_p=stitch_folder + 'img_t2_z1_c1_adj.tif')
+
+    file = open(stitch_folder + 'input_files.txt', 'w')
+    file.write(stitch_folder + 'img_t1_z1_c1.tif\n')
+    file.write(stitch_folder + 'img_t2_z1_c1.tif\n')
+    file.write(stitch_folder + 'img_t1_z1_c1_adj.tif\n')
+    file.write(stitch_folder + 'img_t2_z1_c1_adj.tif')
+    file.close()
+
 

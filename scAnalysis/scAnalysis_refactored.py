@@ -8,22 +8,22 @@ import matplotlib.pyplot as plt
 from scipy.optimize import basinhopping
 import tifffile as tiff
 import pandas as pd
-import os
+import os, gc
 import itertools
 import seaborn as sns
 import tqdm
 import codecs
 
-
 def defMOLfeatures(MF,
                    tf_obj,
-                   CDs=[0.75],
+                   CDs=[2],
                    tol_fact=-0.2,
                    filter = 'correlation',
                    norm_method='weighted_mean_sampling_area_MarkCell_overlap_ratio_sampling_area',
                    area_prop=0.3,
                    fetch_ann='online',
-                   hdf5_path='C:/Users/rappez\Google Drive\A-Team/projects/1c/hepatocytes_40samples, DKFZ/2017-011-20-luca-datasets.hdf5'):
+                   hdf5_path='dummy',
+                   correlation_ref='overLaps'):
 
     """Defines molecular intensities of individual cells.
 
@@ -94,17 +94,17 @@ def defMOLfeatures(MF,
         return pix_size
 
     MFA = MF + 'Analysis/'
-    marksMask = np.load(MFA + 'Fiducials/transformedMarksMask.npy')
+    marksMask = np.load(MFA + 'Fiducials/transformedMarksMask.npy', allow_pickle=True)
     cellMask = tiff.imread(MFA + 'CellProfilerAnalysis/Labelled_cells.tiff')
     fluo = tiff.imread(MFA + 'CellProfilerAnalysis/img_t1_z1_c2.tif')
     fluo_nucl = tiff.imread(MFA + 'CellProfilerAnalysis/img_t1_z1_c3.tif')
     bf = tiff.imread(MFA + 'CellProfilerAnalysis/img_t1_z1_c1.tif')
     window = 100
-    coordX, coordY = np.load(MFA + 'Fiducials/transformedMarks.npy')
+    coordX, coordY = np.load(MFA + 'Fiducials/transformedMarks.npy', allow_pickle=True)
     os.chdir(MF + 'Input/MALDI/')
     # ds_name = glob.glob('*.imzML')[0].replace('.imzML', '')
     pixel_size = getPixSize(MF + 'Input/')
-    AM_pass_indexes = np.load(MFA + 'gridFit/AM_pass_filter.npy')
+    AM_pass_indexes = np.load(MFA + 'gridFit/AM_pass_filter.npy', allow_pickle=True)
     AM_pass_indexes = [str(m) for m in AM_pass_indexes]
 
 
@@ -114,7 +114,6 @@ def defMOLfeatures(MF,
     CD = CDs[0]
     # sm = smau.SMInstance()
     os.chdir(MF + 'Input/MALDI/')
-
     imzml_name = glob.glob('*.imzML')[0]
     ds_name = imzml_name.replace('.imzML', '')
 
@@ -127,11 +126,12 @@ def defMOLfeatures(MF,
     sm.login(email='luca.rappez@embl.de', password='Zeppar12')
     d = sm.dataset(ds_name)
     fdr=0.5
+
     results1 = sm.msm_scores([d], d.annotations(fdr, database='HMDB-v4'), db_name='HMDB-v4').T
     results2 = sm.msm_scores([d], d.annotations(fdr, database='ChEBI'), db_name='ChEBI').T
-    # results3 = sm.msm_scores([d], d.annotations(fdr, database='LIPID_MAPS'), db_name='LIPID_MAPS').T
+    results3 = sm.msm_scores([d], d.annotations(fdr, database='LIPID_MAPS'), db_name='LIPID_MAPS').T
     results4 = sm.msm_scores([d], d.annotations(fdr, database='SwissLipids'), db_name='SwissLipids').T
-    results = pd.concat([results1, results2, results4]).drop_duplicates()
+    results = pd.concat([results1, results2, results3, results4]).drop_duplicates()
 
     norm_MM = {}
     # Normalized markMask --> express ablation marks coordinates from the stitched global image
@@ -234,64 +234,51 @@ def defMOLfeatures(MF,
                                                     marks_cell_overlap_indexes, marks_cellLabels, marks_samplingArea, pmi, overLaps])
     else:
         norm_MM, cell_marks, nucl_fluo, cell_fluo, marks_fluo, marks_cell_overlap, mark_area, overlap_indices, marks_fluo_overlap, cell_area, \
-        marks_cell_overlap_indexes, marks_cellLabels, marks_samplingArea, pmi, overLaps = np.load(Fname + 'marks_flitered_fluo.npy')
+        marks_cell_overlap_indexes, marks_cellLabels, marks_samplingArea, pmi, overLaps = np.load(Fname + 'marks_flitered_fluo.npy', allow_pickle=True)
 
     if fetch_ann == 'online':
         if not os.path.exists(Fname + 'filter_results.npy'): #TODO uncomment this
+
             pmi = np.reshape(pmi, [int(np.sqrt(coordX.shape[0])), int(np.sqrt(coordX.shape[0]))]).ravel()
+            overLaps = np.reshape(overLaps, [int(np.sqrt(coordX.shape[0])), int(np.sqrt(coordX.shape[0]))]).ravel()
 
             def err_func(params, pmi, an_vec255):
                 threshold = params
                 corr = correlation(pmi, an_vec255 > threshold)
                 return corr
 
-            # def running_mean(l, N):
-            #     sum = 0
-            #     result = list(0 for x in l)
-            #
-            #     for i in range(0, N):
-            #         sum = sum + l[i]
-            #         result[i] = sum / (i + 1)
-            #
-            #     for i in range(N, len(l)):
-            #         sum = sum - l[i - N] + l[i]
-            #         result[i] = sum / N
-            #    return result
-            # for CD in np.linspace(0, 1, 50):
-            # pmi = np.flipud(d.isotope_images('C13H8O6', '+H')[0]).ravel() #TODO small hack, remove it after
-
             if filter == 'correlation':
-                # fdr = 0.5
-                # results1 = sm.msm_scores([d], d.annotations(fdr, database='HMDB-v4'), db_name='HMDB-v4').T
-                # results2 = sm.msm_scores([d], d.annotations(fdr, database='ChEBI'), db_name='ChEBI').T
-                # # results3 = sm.msm_scores([d], d.annotations(fdr, database='LIPID_MAPS'), db_name='LIPID_MAPS').T
-                # results4 = sm.msm_scores([d], d.annotations(fdr, database='SwissLipids'), db_name='SwissLipids').T
-                # results = pd.concat([results1, results2, results4]).drop_duplicates()
+
                 filter_results = []
-                for i in range(results.shape[0]):
+                for i in tqdm.tqdm(range(results.shape[0])):
                     row = results.reset_index().iloc[i,:]
                     images = d.isotope_images(row.formula, row.adduct)
                     an_vec255 = tf_obj(images[0]).ravel()  # TODO: np.fliplr
-                    step = []
-                    corr = []
-                    for j in np.linspace(0, np.max(an_vec255) - 1, 100):
-                        corr = np.append(corr, correlation(pmi, an_vec255 > j))
-                        step = np.append(step, j)
-                        # print(i)
-                    threshold = np.mean(step[corr == np.min(corr)])
-                    minF = basinhopping(err_func, x0=[threshold], \
-                                        niter=3, T=10, stepsize=10, \
-                                        minimizer_kwargs={'args': ((pmi, an_vec255))}, \
-                                        take_step=None, accept_test=None, callback=None, interval=200, disp=False, \
-                                        niter_success=3)
-                    # print()
-                    threshold = minF.x[0]
-                    best_corr = correlation(pmi, an_vec255 > threshold)
+
+                    if correlation_ref == 'pmi':
+                        step = []
+                        corr = []
+                        for j in np.linspace(0, np.max(an_vec255) - 1, 100):
+                            corr = np.append(corr, correlation(pmi, an_vec255 > j))
+                            step = np.append(step, j)
+                            # print(i)
+                        threshold = np.mean(step[corr == np.min(corr)])
+                        minF = basinhopping(err_func, x0=[threshold], \
+                                            niter=3, T=10, stepsize=10, \
+                                            minimizer_kwargs={'args': ((pmi, an_vec255))}, \
+                                            take_step=None, accept_test=None, callback=None, interval=200, disp=False, \
+                                            niter_success=3)
+                        threshold = minF.x[0]
+                        best_corr = correlation(pmi, an_vec255 > threshold)
+
+                    elif correlation_ref == 'overLaps':
+                        best_corr = correlation(overLaps, an_vec255)
+
                     filter_results = np.append(filter_results, best_corr)
                     # print('Molecule: {}, Corr. dist. = '.format(row.formula) + str(best_corr)[:5])
 
             elif filter == 'mean':
-                fdr = 0.2
+                fdr = 0.5
                 # tol_fact = 0.2 #tolerence factor: number of std the mean of on-sample pixels have to be superior to the
                 pmi_on = [i == 1.0 for i in pmi]
                 pmi_off = [i == 0.0 for i in pmi]
@@ -308,9 +295,9 @@ def defMOLfeatures(MF,
                     filter_results = np.append(filter_results, result)
                 print('{} annotations passed the filter'.format(np.unique(filter_results, return_counts=True)[1][1]))
 
-            np.save(Fname + 'filter_results.npy', [filter_results, pmi])
+            np.save(Fname + 'filter_results.npy', [filter_results, pmi, overLaps])
         else:
-            filter_results, pmi = np.load(Fname + 'filter_results.npy')
+            filter_results, pmi, overLaps = np.load(Fname + 'filter_results.npy', allow_pickle=True)
 
         CD_fname = Fname + 'CD={}/'.format(CDs[0])
         Tol_fname = Fname + 'tol_fact={}/'.format(tol_fact)
@@ -380,28 +367,6 @@ def defMOLfeatures(MF,
                     elif filter == 'mean':
                         if not os.path.exists(Tol_fname):
                             os.makedirs(Tol_fname)
-
-                    # for i, result in enumerate(filter_results):
-                    #     if result < CDs[0] and filter == 'correlation' or filter == 'mean' and result == 1.0:
-                    #         sf = results.reset_index().as_matrix()[i, 0]
-                    #         adduct = results.reset_index().as_matrix()[i, 1]
-                    #         an_vec255 = tf_obj(d.isotope_images(sf, adduct)[0]).ravel()
-                    #         for key, value in cell_marks.items():
-                    #             if not np.shape(cell_fluo[key])[0] == 0:
-                    #
-                    #                 tsne_data[key] = np.append(tsne_data[key], np.mean(an_vec255[[int(k) for k in cell_marks[key]]]))
-                    #                 if norm_method == 'sum':
-                    #                     tsne_data_norm[key] = np.append(tsne_data_norm[key], np.sum(
-                    #                         an_vec255[[int(k) for k in cell_marks[key]]] / [int(k) for k in
-                    #                                                                         marks_cell_overlap[key]]))
-                    #                 if norm_method == 'mean':
-                    #                     tsne_data_norm[key] = np.append(tsne_data_norm[key], np.mean(
-                    #                         an_vec255[[int(k) for k in cell_marks[key]]] / [int(k) for k in
-                    #                                                                         marks_cell_overlap[key]]))
-                    #         tsne_sf = np.append(tsne_sf, sf)
-                    #         tsne_adduct = np.append(tsne_adduct, adduct)
-                    # key = np.array(list(tsne_data.keys()))[0]
-                    # print(np.shape(tsne_data[key]))
 
                     for i, result in tqdm.tqdm(enumerate(filter_results)):
                         if result < CDs[0] and filter == 'correlation' \
@@ -608,8 +573,12 @@ def defMOLfeatures(MF,
         if not os.path.exists(CD_fname):
             os.makedirs(CD_fname)
 
-        df_im0 = pd.read_hdf(hdf5_path)
-        df_im = df_im0[df_im0['ds_name'] == ds_name]
+        if os.path.isdir(hdf5_path):
+            df_im0 = pd.concat([pd.read_hdf(p) for p in glob.glob(hdf5_path + '*.hdf5')])
+        else:
+            df_im0 = pd.read_hdf(hdf5_path)
+
+        df_im = df_im0[df_im0['ds_name'] == ds_name].reset_index()
 
         tsne_data = {}
         tsne_data_norm = {}
@@ -679,9 +648,10 @@ def defMOLfeatures(MF,
         # marks_df['marks_cell_overlap_ratio_sampling_area'] = marks_df['marks_cell_overlap_ratio_sampling_area'].astype(object)
 
         for j in tqdm.tqdm(range(df_im.shape[0])):
-            an_vec255 = tf_obj(df_im.iloc[j, 1]).ravel()
-            sf = df_im.iloc[j, 2]
-            adduct = '-H'
+            an_vec255 = tf_obj(df_im.loc[j, 'image']).ravel()
+            sf = df_im.loc[j, 'mol_formula']
+            if 'adduct' in df_im.columns: sf = sf + ',' + df_im.loc[j, 'adduct']
+
             for cell_ind, value in cell_marks.items():
                 if not np.shape(cell_fluo[cell_ind])[0] == 0:
 
@@ -767,7 +737,7 @@ def defMOLfeatures(MF,
                     MCORSA[cell_ind] = np.append(MCORSA[cell_ind], np.mean(marks_cell_overlap_ratio_sampling_area))
                     nMarks[cell_ind] = np.append(nMarks[cell_ind], np.shape(marks_cell_overlap_ratio_sampling_area)[0])
             tsne_sf = np.append(tsne_sf, sf)
-            tsne_adduct = np.append(tsne_adduct, adduct)
+            # tsne_adduct = np.append(tsne_adduct, adduct)
         key = np.array(list(tsne_data.keys()))[0]
 
         tsne_input = np.array([val for key, val in tsne_data.items()])
@@ -804,10 +774,12 @@ def defMOLfeatures(MF,
                                                'marks_cell_overlap_ratio_sampling_area': MCORSA_input[mask],
                                                'number_of_marks': nMarks_input[mask]}),
                                  pd.DataFrame(data=tsne_input_norm[mask], columns=tsne_sf)], axis=1)
+        gc.collect()
         MOLdf_final.set_index('ObjectNumber_lu').to_csv(CD_fname + 'MOLallData.csv')
-        MOLdf_final[[i for i in itertools.chain(['ObjectNumber_lu'], tsne_sf[:])]].set_index(
-            'ObjectNumber_lu').to_csv(
-            CD_fname + 'MOLonlyData.csv')
+        gc.collect()
+        # MOLdf_final[[i for i in itertools.chain(['ObjectNumber_lu'], tsne_sf[:])]].set_index(
+        #     'ObjectNumber_lu').to_csv(
+        #     CD_fname + 'MOLonlyData.csv')
 
 def defMORPHfeatures(MF):
     """Reads morphological features of interest from CellProfiler csv output, and save them as a a new csv.
@@ -1000,8 +972,8 @@ def mapAnn2microCells(MF, MFA, csv_p, tf_obj,
 
     # tiff.imsave(MFA + 'Mapping/' + coloring_field + '_gray.tif', color_mask[100:-100,100:-100])
     if draw_AM:
-        marksMask = np.load(MFA + 'Fiducials/transformedMarksMask.npy')
-        coordX, coordY = np.load(MFA + 'Fiducials/transformedMarks.npy')
+        marksMask = np.load(MFA + 'Fiducials/transformedMarksMask.npy', allow_pickle=True)
+        coordX, coordY = np.load(MFA + 'Fiducials/transformedMarks.npy', allow_pickle=True)
         images = pd.read_hdf('C:/Users\Luca\Google Drive\A-Team\projects/1c\hepatocytes, DKFZ\datasets\Molecular images/2017-09-12-luca-mz-images.hdf5')
         os.chdir(MF + 'Input/MALDI/')
         ds_name = glob.glob('*.imzML')[0].replace('.imzML', '')
@@ -1047,8 +1019,8 @@ def annotation2microscopyAblationMarks(MF, sf, adduct, clip_percentile, touch_ce
     img = plt.imread(MFA + 'CellProfilerAnalysis/Contour_cells_adjusted.png')
     cellMask = tiff.imread(MFA + 'CellProfilerAnalysis/Labelled_cells.tif')
     cellMask_bw = cellMask>0
-    marksMask = np.load(MFA + 'Fiducials/transformedMarksMask.npy')
-    coordX, coordY = np.load(MFA + 'Fiducials/transformedMarks.npy')
+    marksMask = np.load(MFA + 'Fiducials/transformedMarksMask.npy', allow_pickle=True)
+    coordX, coordY = np.load(MFA + 'Fiducials/transformedMarks.npy', allow_pickle=True)
 
 
     sm = smau.SMInstance()

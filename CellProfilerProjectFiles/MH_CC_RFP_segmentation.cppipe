@@ -2,7 +2,7 @@ CellProfiler Pipeline: http://www.cellprofiler.org
 Version:3
 DateRevision:300
 GitHash:
-ModuleCount:14
+ModuleCount:12
 HasImagePlaneDetails:False
 
 Images:[module_num:1|svn_version:\'Unknown\'|variable_revision_number:2|show_window:False|notes:\x5B\'To begin creating your project, use the Images module to compile a list of files and/or folders that you want to analyze. You can also specify a set of rules to include only the desired files in your selected folders.\'\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
@@ -39,29 +39,29 @@ NamesAndTypes:[module_num:3|svn_version:\'Unknown\'|variable_revision_number:8|s
     Relative pixel spacing in X:1.0
     Relative pixel spacing in Y:1.0
     Relative pixel spacing in Z:1.0
-    Select the rule criteria:and (file does contain "c3")
-    Name to assign these images:OrigBlue
+    Select the rule criteria:and (file does contain "c2")
+    Name to assign these images:DAPI
     Name to assign these objects:Cell
     Select the image type:Grayscale image
     Set intensity range from:Image metadata
     Maximum intensity:255.0
-    Select the rule criteria:and (file does contain "c1")
-    Name to assign these images:OrigGreen
+    Select the rule criteria:and (file does contain "segmentation")
+    Name to assign these images:Segmentation
     Name to assign these objects:Nucleus
     Select the image type:Grayscale image
     Set intensity range from:Image metadata
     Maximum intensity:255.0
-    Select the rule criteria:and (file does contain "c2.tif")
-    Name to assign these images:OrigRed_highDR
+    Select the rule criteria:and (file does contain "c1")
+    Name to assign these images:RFP
     Name to assign these objects:Cytoplasm
     Select the image type:Grayscale image
     Set intensity range from:Image metadata
     Maximum intensity:255.0
-    Select the rule criteria:and (file does contain "c2_adjusted")
-    Name to assign these images:OrigRed_lowDR
+    Select the rule criteria:and (file does contain "c3")
+    Name to assign these images:LipidTOX
     Name to assign these objects:Speckle
     Select the image type:Grayscale image
-    Set intensity range from:Image bit-depth
+    Set intensity range from:Image metadata
     Maximum intensity:255.0
 
 Groups:[module_num:4|svn_version:\'Unknown\'|variable_revision_number:2|show_window:False|notes:\x5B\'The Groups module optionally allows you to split your list of images into image subsets (groups) which will be processed independently of each other. Examples of groupings include screening batches, microtiter plates, time-lapse movies, etc.\'\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
@@ -70,13 +70,13 @@ Groups:[module_num:4|svn_version:\'Unknown\'|variable_revision_number:2|show_win
     Metadata category:None
 
 IdentifyPrimaryObjects:[module_num:5|svn_version:\'Unknown\'|variable_revision_number:13|show_window:False|notes:\x5B\'Identify the nuclei from the nuclear stain image. Some manual adjustment of the smoothing filter size and maxima supression distance is required to optimize segmentation.\'\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
-    Select the input image:OrigBlue
+    Select the input image:DAPI
     Name the primary objects to be identified:Nuclei
-    Typical diameter of objects, in pixel units (Min,Max):9,30
+    Typical diameter of objects, in pixel units (Min,Max):9,70
     Discard objects outside the diameter range?:Yes
     Discard objects touching the border of the image?:No
     Method to distinguish clumped objects:Shape
-    Method to draw dividing lines between clumped objects:Propagate
+    Method to draw dividing lines between clumped objects:Shape
     Size of smoothing filter:10
     Suppress local maxima that are closer than this minimum allowed distance:5
     Speed up by using lower-resolution image to find local maxima?:No
@@ -88,15 +88,15 @@ IdentifyPrimaryObjects:[module_num:5|svn_version:\'Unknown\'|variable_revision_n
     Use advanced settings?:Yes
     Threshold setting version:9
     Threshold strategy:Adaptive
-    Thresholding method:None
-    Threshold smoothing scale:1
-    Threshold correction factor:1.2
+    Thresholding method:Otsu
+    Threshold smoothing scale:0
+    Threshold correction factor:1
     Lower and upper bounds on threshold:0,1
     Manual threshold:0.0
     Select the measurement to threshold with:None
     Two-class or three-class thresholding?:Two classes
     Assign pixels in the middle intensity class to the foreground or the background?:Foreground
-    Size of adaptive window:100
+    Size of adaptive window:700
     Lower outlier fraction:0.05
     Upper outlier fraction:0.05
     Averaging method:Mean
@@ -104,33 +104,11 @@ IdentifyPrimaryObjects:[module_num:5|svn_version:\'Unknown\'|variable_revision_n
     # of deviations:2
     Thresholding method:Otsu
 
-MeasureObjectSizeShape:[module_num:6|svn_version:\'Unknown\'|variable_revision_number:1|show_window:False|notes:\x5B\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:False|wants_pause:False]
-    Select objects to measure:Nuclei
-    Calculate the Zernike features?:Yes
-
-FilterObjects:[module_num:7|svn_version:\'Unknown\'|variable_revision_number:8|show_window:False|notes:\x5B\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:False|wants_pause:False]
-    Select the objects to filter:Nuclei
-    Name the output objects:FilteredBlue
-    Select the filtering mode:Measurements
-    Select the filtering method:Limits
-    Select the objects that contain the filtered objects:Nuclei
-    Select the location of the rules or classifier file:Elsewhere...\x7C
-    Rules or classifier file name:rules.txt
-    Class number:1
-    Measurement count:1
-    Additional object count:0
-    Assign overlapping child to:Both parents
-    Select the measurement to filter by:AreaShape_Area
-    Filter using a minimum measurement value?:Yes
-    Minimum value:150
-    Filter using a maximum measurement value?:No
-    Maximum value:1.0
-
-IdentifySecondaryObjects:[module_num:8|svn_version:\'Unknown\'|variable_revision_number:10|show_window:False|notes:\x5B\'Identify the cells by using the nuclei as a "seed" region, then growing outwards until stopped by the image threshold or by a neighbor. The Propagation method is used to delineate the boundary between neighboring cells.\'\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
+IdentifySecondaryObjects:[module_num:6|svn_version:\'Unknown\'|variable_revision_number:10|show_window:False|notes:\x5B\'Identify the cells by using the nuclei as a "seed" region, then growing outwards until stopped by the image threshold or by a neighbor. The Propagation method is used to delineate the boundary between neighboring cells.\'\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
     Select the input objects:Nuclei
     Name the objects to be identified:Cells
     Select the method to identify the secondary objects:Watershed - Image
-    Select the input image:OrigRed_lowDR
+    Select the input image:Segmentation
     Number of pixels by which to expand the primary objects:10
     Regularization factor:0.05
     Discard secondary objects touching the border of the image?:No
@@ -138,9 +116,9 @@ IdentifySecondaryObjects:[module_num:8|svn_version:\'Unknown\'|variable_revision
     Name the new primary objects:FilteredNuclei
     Fill holes in identified objects?:Yes
     Threshold setting version:9
-    Threshold strategy:Adaptive
+    Threshold strategy:Global
     Thresholding method:Otsu
-    Threshold smoothing scale:1.3
+    Threshold smoothing scale:1
     Threshold correction factor:0.3
     Lower and upper bounds on threshold:0,1
     Manual threshold:0
@@ -155,19 +133,19 @@ IdentifySecondaryObjects:[module_num:8|svn_version:\'Unknown\'|variable_revision
     # of deviations:2
     Thresholding method:Otsu
 
-MeasureObjectSizeShape:[module_num:9|svn_version:\'Unknown\'|variable_revision_number:1|show_window:False|notes:\x5B\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
+MeasureObjectSizeShape:[module_num:7|svn_version:\'Unknown\'|variable_revision_number:1|show_window:False|notes:\x5B\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
     Select objects to measure:Cells
-    Select objects to measure:Nuclei
     Calculate the Zernike features?:Yes
 
-MeasureObjectIntensity:[module_num:10|svn_version:\'Unknown\'|variable_revision_number:3|show_window:False|notes:\x5B\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
-    Hidden:2
-    Select an image to measure:OrigBlue
-    Select an image to measure:OrigRed_highDR
+MeasureObjectIntensity:[module_num:8|svn_version:\'Unknown\'|variable_revision_number:3|show_window:False|notes:\x5B\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
+    Hidden:3
+    Select an image to measure:DAPI
+    Select an image to measure:LipidTOX
+    Select an image to measure:RFP
     Select objects to measure:Nuclei
     Select objects to measure:Cells
 
-MeasureObjectNeighbors:[module_num:11|svn_version:\'Unknown\'|variable_revision_number:2|show_window:False|notes:\x5B\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
+MeasureObjectNeighbors:[module_num:9|svn_version:\'Unknown\'|variable_revision_number:2|show_window:False|notes:\x5B\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
     Select objects to measure:Cells
     Select neighboring objects to measure:Cells
     Method to determine neighbors:Adjacent
@@ -179,13 +157,13 @@ MeasureObjectNeighbors:[module_num:11|svn_version:\'Unknown\'|variable_revision_
     Name the output image:PercentTouching
     Select colormap:Default
 
-ConvertObjectsToImage:[module_num:12|svn_version:\'Unknown\'|variable_revision_number:1|show_window:False|notes:\x5B\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
+ConvertObjectsToImage:[module_num:10|svn_version:\'Unknown\'|variable_revision_number:1|show_window:False|notes:\x5B\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
     Select the input objects:Cells
     Name the output image:CellImage
     Select the color format:uint16
     Select the colormap:Default
 
-SaveImages:[module_num:13|svn_version:\'Unknown\'|variable_revision_number:13|show_window:False|notes:\x5B\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
+SaveImages:[module_num:11|svn_version:\'Unknown\'|variable_revision_number:13|show_window:False|notes:\x5B\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
     Select the type of image to save:Image
     Select the image to save:CellImage
     Select method for constructing file names:Single name
@@ -195,7 +173,7 @@ SaveImages:[module_num:13|svn_version:\'Unknown\'|variable_revision_number:13|sh
     Append a suffix to the image file name?:No
     Text to append to the image name:
     Saved file format:tiff
-    Output file location:Default Output Folder\x7C
+    Output file location:Default Output Folder\x7CF\x3A\\\\\\\\Experiments\\\\\\\\20190428_MH_cc_RFP_segmentation_test\\\\\\\\10_1_88k_CC_FA\\\\\\\\CP_tests
     Image bit depth:16-bit integer
     Overwrite existing files without warning?:Yes
     When to save:Last cycle
@@ -203,7 +181,7 @@ SaveImages:[module_num:13|svn_version:\'Unknown\'|variable_revision_number:13|sh
     Create subfolders in the output folder?:No
     Base image folder:Elsewhere...\x7C
 
-ExportToSpreadsheet:[module_num:14|svn_version:\'Unknown\'|variable_revision_number:12|show_window:False|notes:\x5B"Export any measurements to a comma-delimited file (.csv). The measurements made for the nuclei, cell and cytoplasm objects will be saved to separate .csv files, in addition to the per-image .csv\'s."\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
+ExportToSpreadsheet:[module_num:12|svn_version:\'Unknown\'|variable_revision_number:12|show_window:False|notes:\x5B"Export any measurements to a comma-delimited file (.csv). The measurements made for the nuclei, cell and cytoplasm objects will be saved to separate .csv files, in addition to the per-image .csv\'s."\x5D|batch_state:array(\x5B\x5D, dtype=uint8)|enabled:True|wants_pause:False]
     Select the column delimiter:Comma (",")
     Add image metadata columns to your object data file?:No
     Select the measurements to export:No

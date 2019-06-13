@@ -36,8 +36,8 @@ class Annotate(object):
 MFA = MF + 'Analysis/'
 
 Path = MFA + 'gridFit/ablation_marks_XY'
-Path = MFA + 'SURF/preXYsurf'
-Path = MFA + 'SURF/postXYsurf'
+Path = MFA + 'Fiducials/postXYpenmarks'
+Path = MFA + 'Fiducials/preXYpenmarks'
 
 #CHOOSE
 purpose = 'select'

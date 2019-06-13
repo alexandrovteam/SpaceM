@@ -4,13 +4,16 @@ from skimage import exposure
 from scipy import ndimage
 from scipy.optimize import basinhopping
 from scipy import spatial
-import os, gc
+import os, gc, glob, spaceM
 import numpy as np
 import matplotlib.pyplot as plt
 import tifffile as tiff
 import spaceM.ImageFileManipulation.FIJIcalls as fc
+import spaceM.Pipeline as sp
 
-def penMarksFeatures(MF, prefix, whole_image=True):
+# MFA = sp.getPath('MF') + 'Analysis/'
+
+def penMarksFeatures(MF, prefix='', input=[], whole_image=True, output=[]):
     """Obtain coordinates of the pixels at the edge of the penmarks from the tile frames in both pre- and post-MALDI
     microscopy datasets using matlab implementation of the SURF algorithm.
 
@@ -36,7 +39,7 @@ def penMarksFeatures(MF, prefix, whole_image=True):
         hist, bins_center = exposure.histogram(im)
 
         plt.plot(bins_center, hist, lw=2)
-        plt.axvline(val, color='w', ls='--', label='Threshold')
+        plt.axvline(val, color='k', ls='--', label='Threshold')
         plt.yscale('log')
         plt.xlabel('Pixel intensities')
         plt.ylabel('Log10(counts)')
@@ -68,7 +71,17 @@ def penMarksFeatures(MF, prefix, whole_image=True):
 
     folder = MF + 'Analysis/StitchedMicroscopy/' + prefix + 'MALDI_FLR/'
     if whole_image:
-        X,Y = fiducialFinder(im_p=folder + 'img_t1_z1_c1')
+        if prefix == 'pre':
+            X,Y = fiducialFinder(im_p=folder + 'img_t1_z1_c0')
+        if prefix == 'post':
+            X,Y = fiducialFinder(im_p=folder + 'img_t1_z1_c0')
+        # if prefix == 'timelapse':
+        #     os.chdir(MF + 'Input/Timelapse/BF/')
+        #     X,Y = fiducialFinder(im_p= MF + 'Input/Timelapse/BF/{}'.format(
+        #         glob.glob(r'T*')[np.argsort([int(s[1:]) for s in glob.glob(r'T*')])[-1]]))
+        if type(input) == str:
+            X, Y = fiducialFinder(im_p=input)
+
     else:
         [picXcoord, picYcoord] = fc.readTileConfReg(folder)
         X = []
@@ -84,7 +97,10 @@ def penMarksFeatures(MF, prefix, whole_image=True):
                         X = np.append(X, xScaled)
                         Y = np.append(Y, yScaled)
                 print(item)
-    np.save(MF + 'Analysis/Fiducials/' + prefix + 'XYpenmarks.npy', [X, Y])
+    if type(output) == str:
+        np.save(output, [X, Y])
+    else:
+        np.save(MF + 'Analysis/Fiducials/' + prefix + 'XYpenmarks.npy', [X, Y])
 
     plt.figure()
     plt.scatter(X, Y, 1)
@@ -113,7 +129,9 @@ def transform(postX, postY, transX, transY, rot):
     transformed = tf.matrix_transform(np.transpose([postX, postY]), tform.params)
     return transformed
 
-def fiducialsAlignment(MFA):
+def fiducialsAlignment(MF,
+                       src,
+                       dst):
     """Define the coordinate transform parameters leading to the optimal overlap between the pre and post-MALDI
     fiducials.
 
@@ -162,8 +180,8 @@ def fiducialsAlignment(MFA):
         distances = np.array(get_distance(transformed[:, 0], transformed[:, 1], preX, preY, 1)[0])
         return np.mean(distances)
 
-    preX, preY = np.load(MFA + 'Fiducials/preXYpenmarks.npy')
-    postX, postY = np.load(MFA + 'Fiducials/postXYpenmarks.npy')
+    preX, preY = np.load(dst)
+    postX, postY = np.load(src)
 
     n_features = 2000
     post_den = int(np.round(np.shape(postX)[0] / n_features))
@@ -208,17 +226,19 @@ def fiducialsAlignment(MFA):
     #     rot = minF_rot.x[2]
     #     # scale = minF.x[3]
     #     print('rot = 180 deg')
-
-    np.save(MFA + '/Fiducials/optimized_params.npy', [transX, transY, rot])
+    if dst == MF + 'Analysis/Fiducials/timelapseXYpenmarks.npy':
+        np.save(MF + 'Analysis//Fiducials/optimized_params_timelapse.npy', [transX, transY, rot])
+    else:
+        np.save(MF + 'Analysis//Fiducials/optimized_params.npy', [transX, transY, rot])
     transformed = transform(postX, postY, transX, transY, rot)
     plt.figure()
     plt.scatter(transformed[:, 0], transformed[:, 1],1)
     plt.scatter(preX, preY, 1, 'r')
     plt.axis('equal')
-    plt.savefig(MFA + '/Fiducials/surfRegResults.png', dpi = 500)
+    plt.savefig(MF + 'Analysis//Fiducials/surfRegResults.png', dpi = 500)
     plt.close('all')
 
-def TransformMarks(MFA):
+def TransformMarks(MF, dst=''):
     """Transform the ablation mark coordinates from the post-MALDI dataset using the geometric transform parameters
     defined in SURF_Alignment() function to estimate their position in the pre-MALDI dataset.
 
@@ -226,22 +246,26 @@ def TransformMarks(MFA):
          MFA (str): path to Main Folder Analysis.
 
      """
-    xe_clean2, ye_clean2 = np.load(MFA + '/gridFit/xye_clean2.npy')
-    x_spots, y_spots = np.load(MFA + '/gridFit/xye_grid.npy')
-    transX, transY, rot = np.load(MFA + '/Fiducials/optimized_params.npy')
-    scale = 1
-    shape, pix_size = np.load(MFA + '/gridFit/metadata.npy')
+    MFA = MF+'Analysis/'
+    xe_clean2, ye_clean2 = np.load(MFA + '/gridFit/xye_clean2.npy', allow_pickle=True)
+    x_spots, y_spots = np.load(MFA + '/gridFit/xye_grid.npy', allow_pickle=True)
+
+    if dst == 'timelapse':
+        transX, transY, rot = np.load(MFA + '/Fiducials/optimized_params_timelapse.npy', allow_pickle=True)
+    else:
+        transX, transY, rot = np.load(MFA + '/Fiducials/optimized_params.npy', allow_pickle=True)
+
     xye_tf = transform(xe_clean2, ye_clean2, transX, transY, rot)
     X = xye_tf[:, 0]
     Y = xye_tf[:, 1]
-    np.save(MFA + '/Fiducials/transformedMarks.npy', [X, Y])
+    np.save(MFA + '/Fiducials/{}transformedMarks.npy'.format(dst), [X, Y])
     xyg_tf = transform(x_spots.ravel(), y_spots.ravel(), transX, transY, rot)
     Xg = xyg_tf[:, 0]
     Yg = xyg_tf[:, 1]
-    np.save(MFA + '/Fiducials/transformedGrid.npy', [Xg, Yg])
+    np.save(MFA + '/Fiducials/{}transformedGrid.npy'.format(dst), [Xg, Yg])
 
     if os.path.exists(MFA + 'gridFit/marksMask.npy'):
-        marksMask = np.load(MFA + 'gridFit/marksMask.npy')
+        marksMask = np.load(MFA + 'gridFit/marksMask.npy', allow_pickle=True)
         tfMarksMask = []
         for i in range(np.shape(marksMask)[0]):
             if np.shape(marksMask[i][0].T)[0] > 1:
@@ -250,10 +274,14 @@ def TransformMarks(MFA):
             else:
                 tfMarksMask.append([[], []])
                 print('empty')
-        np.save(MFA + '/Fiducials/transformedMarksMask.npy', tfMarksMask)
+        np.save(MFA + '/Fiducials/{}transformedMarksMask.npy'.format(dst), tfMarksMask)
+        tfMarksMask = np.array(tfMarksMask)
 
-    tfMarksMask = np.array(tfMarksMask)
-    penmarks = np.load(MFA + 'Fiducials/preXYpenmarks.npy')
+    if dst == 'timelapse':
+        penmarks = np.load(MFA + 'Fiducials/{}XYpenmarks.npy'.format(dst), allow_pickle=True)
+    else:
+        penmarks = np.load(MFA + 'Fiducials/preXYpenmarks.npy', allow_pickle=True)
+
     plt.figure(figsize=[50,25])
     plt.scatter(penmarks[0,:], penmarks[1,:], 1, c='k')
     plt.axis('equal')
@@ -261,5 +289,5 @@ def TransformMarks(MFA):
         if np.shape(tfMarksMask[i][0])[0] > 1:
             plt.scatter(tfMarksMask[i][0], tfMarksMask[i][1], 1, 'r')
     plt.scatter(X, Y, 1, c='g')
-    plt.savefig(MFA + '/Fiducials/registration_result.png', dpi=100)
+    plt.savefig(MFA + '/Fiducials/{}registration_result.png'.format(dst), dpi=100)
     plt.close('all')

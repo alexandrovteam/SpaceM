@@ -5,6 +5,7 @@ from spaceM.Pipeline import getPath, stitchMicroscopy, \
     registration, \
     cellSegmentation, \
     spatioMolecularMatrix, \
+    ablationMarks_crop, \
     curator
 import spaceM.CellProfilerProjectFiles.CP_upstream as CP_upstream
 import numpy as np
@@ -23,53 +24,59 @@ def img_tf(img):
         out (array): the transformed ion image.
     """
     # return img #20171206_CoCulture
-    return np.fliplr(img) #20171106_Hepa_Nov, 20170622_Hepa_June_DAN_Untreated_FA_LPS_TNFa
+    # return np.fliplr(img) #20171106_Hepa_Nov, 20170622_Hepa_June_DAN_Untreated_FA_LPS_TNFa
+    return np.array(img) #20171106_Hepa_Nov, 20170622_Hepa_June_DAN_Untreated_FA_LPS_TNFa
 
-def ion2fluoTF(ion_img):
+def tf_obj(ion_img):
     """Image transformation to apply on ion image for registration.
     Args:
         ion_img (ndarray): the ion image to transform (2D).
     Returns:
         out (array): the transformed ion image.
     """
+    if len(np.shape(ion_img)) == 1:
+        ion_img = np.reshape(ion_img, [int(np.sqrt(np.shape(ion_img)[0])),
+                                       int(np.sqrt(np.shape(ion_img)[0]))])
+
     # return ion_img
     # return ion_img.T  # --> TF1 HepaJune
     # return np.fliplr(ion_img) #--> TF2 HepaJune, 20171206_CoCulture\M5
     return np.flipud(ion_img) # --> TF for HepaNov17, 20180514_Coculture
+    # return np.rot90(np.rot90(ion_img, 2).T, 2)
+    # return np.rot90(ion_img, 2)
 
 def prepCP(MF):
-    CP_upstream.hepatocytes(MF) #--> HepaJune, HepaNov datasets
+    # CP_upstream.hepatocytes(MF) #--> HepaJune, HepaNov datasets
     # CP_upstream.coculture(MF) #--> 20180514_Coculture
+    return CP_upstream.coculture_MH(MF)
 
-channels = ['gray', 'red', 'blue']
+channels = ['gray', 'red', 'green']
 
 MF = getPath('MF')
 print('Main folder: {}'.format(MF))
 
 stitchMicroscopy(MF,
-                 preMALDI=False,
+                 preMALDI=True,
                  postMALDI=True,
                  tf=img_tf,
-                 merge_colors=['gray', 'red', 'blue'],
-                 merge_filenames=['img_t1_z1_c1.tif', 'img_t2_z1_c1.tif', 'img_t3_z1_c1.tif'])
+                 merge_colors=[],
+                 merge_filenames=[])
 
-# curator(MF + 'Analysis/StitchedMicroscopy/postMALDI_FLR/img_t1_z1_c1')
-# ablationMarksFinder_old(MF)
-# fiducialsFinder(MF)
+ablationMarks_crop(MF, im_name='img_t1_z1_c0')# ablationMarksFinder_old(MF)
+fiducialsFinder(MF)
 
 # curator(MF + 'Analysis/gridFit/ablation_marks_XY.npy', 'Ablation marks\nSelect ablation marks')
-# curator(MF + 'Analysis/Fiducials/postXYpenmarks.npy', 'Post-MALDI\nRemove noisy detections')
-# curator(MF + 'Analysis/Fiducials/preXYpenmarks.npy', 'Pre-MALDI\nRemove noisy detections')
+curator(MF + 'Analysis/Fiducials/postXYpenmarks.npy', 'Post-MALDI\nRemove noisy detections')
+curator(MF + 'Analysis/Fiducials/preXYpenmarks.npy', 'Pre-MALDI\nRemove noisy detections')
 
-ablationMarksFilter(MF)
-registration(MF, tf_obj=ion2fluoTF, ili_fdr=0.2)
+ablationMarksFilter(MF, matrix='DAN')
+registration(MF, do_ili=True, tf_obj=tf_obj)
 
 cellSegmentation(MF,
-                 merge_colors=['gray', 'green', 'red'],
-                 merge_filenames=['img_t2_z1_c1.tif', 'img_t3_z1_c1.tif', 'img_t4_z1_c1.tif'],
+                 merge_colors=channels,
+                 merge_filenames=['img_t1_z1_c0.tif', 'img_t1_z1_c1.tif', 'img_t1_z1_c3_adjusted.tif'],
                  prepCP_fun=prepCP)
 
 # curator(MF + 'Analysis/CellProfilerAnalysis/Labelled_cells.tiff', 'Label image, remove wrong segmentations')
 
-spatioMolecularMatrix(MF, tf_obj=ion2fluoTF, fetch_ann = 'offline')
-
+spatioMolecularMatrix(MF, tf_obj=tf_obj, fetch_ann='online')
