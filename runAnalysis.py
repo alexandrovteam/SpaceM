@@ -69,7 +69,7 @@ fiducialsFinder(MF)
 curator(MF + 'Analysis/Fiducials/postXYpenmarks.npy', 'Post-MALDI\nRemove noisy detections')
 curator(MF + 'Analysis/Fiducials/preXYpenmarks.npy', 'Pre-MALDI\nRemove noisy detections')
 
-ablationMarksFilter(MF, matrix='DAN')
+ablationMarksFilter(MF, matrix='DHB')
 registration(MF, do_ili=True, tf_obj=tf_obj)
 
 cellSegmentation(MF,
