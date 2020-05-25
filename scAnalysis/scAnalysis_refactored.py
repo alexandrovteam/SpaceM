@@ -13,6 +13,7 @@ import itertools
 import seaborn as sns
 import tqdm
 import codecs
+from pyimzml.ImzMLParser import ImzMLParser
 
 def defMOLfeatures(MF,
                    tf_obj,
@@ -23,7 +24,8 @@ def defMOLfeatures(MF,
                    area_prop=0.3,
                    fetch_ann='online',
                    hdf5_path='dummy',
-                   correlation_ref='overLaps'):
+                   correlation_ref='overLaps',
+                   TIC_normalization='True'):
 
     """Defines molecular intensities of individual cells.
 
@@ -96,16 +98,16 @@ def defMOLfeatures(MF,
     MFA = MF + 'Analysis/'
     marksMask = np.load(MFA + 'Fiducials/transformedMarksMask.npy', allow_pickle=True)
     cellMask = tiff.imread(MFA + 'CellProfilerAnalysis/Labelled_cells.tiff')
-    fluo = tiff.imread(MFA + 'CellProfilerAnalysis/img_t1_z1_c2.tif')
-    fluo_nucl = tiff.imread(MFA + 'CellProfilerAnalysis/img_t1_z1_c3.tif')
-    bf = tiff.imread(MFA + 'CellProfilerAnalysis/img_t1_z1_c1.tif')
+    fluo = tiff.imread(MFA + 'CellProfilerAnalysis/img_t1_z1_c1.tif')
+    fluo_nucl = tiff.imread(MFA + 'CellProfilerAnalysis/img_t2_z1_c1.tif')
+    # bf = tiff.imread(MFA + 'CellProfilerAnalysis/img_t1_z1_c0.tif')
     window = 100
     coordX, coordY = np.load(MFA + 'Fiducials/transformedMarks.npy', allow_pickle=True)
     os.chdir(MF + 'Input/MALDI/')
     # ds_name = glob.glob('*.imzML')[0].replace('.imzML', '')
     pixel_size = getPixSize(MF + 'Input/')
-    AM_pass_indexes = np.load(MFA + 'gridFit/AM_pass_filter.npy', allow_pickle=True)
-    AM_pass_indexes = [str(m) for m in AM_pass_indexes]
+    # AM_pass_indexes = np.load(MFA + 'gridFit/AM_pass_filter.npy', allow_pickle=True)
+    # AM_pass_indexes = [str(m) for m in AM_pass_indexes]
 
 
     Fname = MFA + 'scAnalysis/Molecular_features/'
@@ -117,21 +119,31 @@ def defMOLfeatures(MF,
     imzml_name = glob.glob('*.imzML')[0]
     ds_name = imzml_name.replace('.imzML', '')
 
+    if TIC_normalization:
+        # Collect TIC image
+        p = ImzMLParser(MF + 'Input/MALDI/' + imzml_name)
+        TIC = []
+        for idx, (x, y, z) in tqdm.tqdm(enumerate(p.coordinates)):
+            mzs, intensities = p.getspectrum(idx)
+            TIC.append(np.sum(intensities))
+        shape = np.shape(p.getionimage(mz_value=500, tol=0.1))
+        TIC = tf_obj(np.reshape(TIC, shape)).ravel()
+
+
     config = {
         'graphql_url': 'http://staging.metaspace2020.eu/graphql',
         'moldb_url': 'http://staging.metaspace2020.eu/mol_db/v1',
         'jwt': None}
 
     sm = smau.SMInstance()
-    sm.login(email='luca.rappez@embl.de', password='Zeppar12')
+    # sm.login(email='', password='')
     d = sm.dataset(ds_name)
     fdr=0.5
 
-    results1 = sm.msm_scores([d], d.annotations(fdr, database='HMDB-v4'), db_name='HMDB-v4').T
-    results2 = sm.msm_scores([d], d.annotations(fdr, database='ChEBI'), db_name='ChEBI').T
-    results3 = sm.msm_scores([d], d.annotations(fdr, database='LIPID_MAPS'), db_name='LIPID_MAPS').T
-    results4 = sm.msm_scores([d], d.annotations(fdr, database='SwissLipids'), db_name='SwissLipids').T
-    results = pd.concat([results1, results2, results3, results4]).drop_duplicates()
+    results = pd.DataFrame()
+    for db in d.databases:
+        results = results.append(d.results(database=db).reset_index(), ignore_index=True)
+    # results = results
 
     norm_MM = {}
     # Normalized markMask --> express ablation marks coordinates from the stitched global image
@@ -191,7 +203,7 @@ def defMOLfeatures(MF,
                         nucl_fluo[str(cell_ind)] = np.append(nucl_fluo[str(cell_ind)],
                                                              np.mean(fluo_nucl[cellMask == cell_ind]))
                         overlap_indices = np.where(cellMask_bw[norm_MM[mark_ind]['x'], norm_MM[mark_ind]['y']] == 1)[0]
-                        marks_fluo[str(cell_ind)] = np.append(cell_fluo[str(cell_ind)],
+                        marks_fluo[str(cell_ind)] = np.append(marks_fluo[str(cell_ind)],
                                                        np.mean(fluo[norm_MM[mark_ind]['x'], norm_MM[mark_ind]['y']]))  # TODO: remove np.fliplr
                         marks_fluo_overlap[str(cell_ind)] = np.append(marks_fluo_overlap[str(cell_ind)], np.mean(
                                                                fluo[norm_MM[mark_ind]['x'][overlap_indices],
@@ -237,7 +249,7 @@ def defMOLfeatures(MF,
         marks_cell_overlap_indexes, marks_cellLabels, marks_samplingArea, pmi, overLaps = np.load(Fname + 'marks_flitered_fluo.npy', allow_pickle=True)
 
     if fetch_ann == 'online':
-        if not os.path.exists(Fname + 'filter_results.npy'): #TODO uncomment this
+        if not os.path.exists(Fname + 'filter_results.npy'):
 
             pmi = np.reshape(pmi, [int(np.sqrt(coordX.shape[0])), int(np.sqrt(coordX.shape[0]))]).ravel()
             overLaps = np.reshape(overLaps, [int(np.sqrt(coordX.shape[0])), int(np.sqrt(coordX.shape[0]))]).ravel()
@@ -252,8 +264,9 @@ def defMOLfeatures(MF,
                 filter_results = []
                 for i in tqdm.tqdm(range(results.shape[0])):
                     row = results.reset_index().iloc[i,:]
+                    # print(row)
                     images = d.isotope_images(row.formula, row.adduct)
-                    an_vec255 = tf_obj(images[0]).ravel()  # TODO: np.fliplr
+                    an_vec255 = tf_obj(images[0]).ravel()
 
                     if correlation_ref == 'pmi':
                         step = []
@@ -288,7 +301,7 @@ def defMOLfeatures(MF,
                 for i in range(results.shape[0]):
                     row = results.reset_index().iloc[i,:]
                     images = d.isotope_images(row.formula, row.adduct)
-                    an_vec255 = tf_obj(images[0]).ravel()  # TODO: np.fliplr
+                    an_vec255 = tf_obj(images[0]).ravel()
                     result = np.float(an_vec255[pmi_on]) > np.mean(an_vec255[pmi_off]) + (tol_fact*np.std(an_vec255[pmi_off]))
                     if result == 1.0:
                         print(row.formula)
@@ -372,9 +385,11 @@ def defMOLfeatures(MF,
                         if result < CDs[0] and filter == 'correlation' \
                                 or \
                                 filter == 'mean' and result == 1.0:
-                            sf = results.reset_index().as_matrix()[i, 0]
-                            adduct = results.reset_index().as_matrix()[i, 1]
+                            sf = results.reset_index(drop=True).as_matrix()[i, 0]
+                            adduct = results.reset_index(drop=True).as_matrix()[i, 1]
                             an_vec255 = tf_obj(d.isotope_images(sf, adduct)[0]).ravel()
+                            if TIC_normalization:
+                                an_vec255 = an_vec255 / TIC
                             for cell_ind, value in cell_marks.items():
                                 if not np.shape(cell_fluo[cell_ind])[0] == 0:
 
@@ -418,6 +433,11 @@ def defMOLfeatures(MF,
                                         # Mean Intensity of AM touching the cell OI
                                         tsne_data_norm[cell_ind] = np.append(tsne_data_norm[cell_ind],
                                                                              np.mean(marks_intensities[marks_ind_filter]))
+
+                                    if norm_method == 'Sum_intensity':
+                                        # Mean Intensity of AM touching the cell OI
+                                        tsne_data_norm[cell_ind] = np.append(tsne_data_norm[cell_ind],
+                                                                             np.sum(marks_intensities[marks_ind_filter]))
 
                                     if norm_method == 'weighted_mean_sampling_area_MarkCell_overlap_int_power1,7':
                                         # Mean Intensity of AM dvidied by its sampling area weighted by the number of pixels of the
@@ -649,12 +669,14 @@ def defMOLfeatures(MF,
 
         for j in tqdm.tqdm(range(df_im.shape[0])):
             an_vec255 = tf_obj(df_im.loc[j, 'image']).ravel()
+            # if TIC_normalization:
+            #     an_vec255 = an_vec255 / TIC
             sf = df_im.loc[j, 'mol_formula']
             if 'adduct' in df_im.columns: sf = sf + ',' + df_im.loc[j, 'adduct']
 
             for cell_ind, value in cell_marks.items():
                 if not np.shape(cell_fluo[cell_ind])[0] == 0:
-
+                    # print(cell_ind, value)
                     marks_indexes = [int(mark_ind) for mark_ind in cell_marks[cell_ind]] #indexes of ablation marks touching the indexed cell (cell_ind)
                     marks_intensities = an_vec255[marks_indexes] #raw intensities of ablation marks for the indexed annotation
                     mark_indexed_area = np.array([mark_area[mark_ind] for mark_ind in cell_marks[cell_ind]]) #number of pixels (from microscopy present within each
@@ -736,6 +758,7 @@ def defMOLfeatures(MF,
                     MCORWA[cell_ind] = np.append(MCORWA[cell_ind], np.mean(marks_cell_overlap_ratio_whole_area))
                     MCORSA[cell_ind] = np.append(MCORSA[cell_ind], np.mean(marks_cell_overlap_ratio_sampling_area))
                     nMarks[cell_ind] = np.append(nMarks[cell_ind], np.shape(marks_cell_overlap_ratio_sampling_area)[0])
+
             tsne_sf = np.append(tsne_sf, sf)
             # tsne_adduct = np.append(tsne_adduct, adduct)
         key = np.array(list(tsne_data.keys()))[0]
@@ -1065,3 +1088,48 @@ def annotation2microscopyAblationMarks(MF, sf, adduct, clip_percentile, touch_ce
     plt.savefig(MFA + 'CellProfilerAnalysis//overlaps/' + sf + '.png', dpi=1200, bbox_inches='tight', frameon='false')
     print('Overlap finished')
     plt.close('all')
+
+def scale(array):
+    return (array - np.min(array)) / (np.max(array) - np.min(array))
+
+def mapAnn2microCellsRefactored(MF, csv_p, tf_obj,
+                                labelled_cells_path,
+                                save_p,
+                                ds='FI1',
+                                coloring_field='C41H71O8P,+Na',
+                                clip_percentile=15,
+                                cmap=cm.jet):
+
+    """Create an image using the label image from CellProfiler where cells are colored based on their intensity for a
+    given metabolite.
+
+    Args:
+        MF (str): path to the Main Folder.
+        MFA (str): path to the Main Folder Analysis.
+        csv_p (str): path to the csv containing the molecular and morphological features of the cells.
+        tf_obj (function): Image transformation to apply on ion image for registration.
+        labelled_cells_path (str): path to the label image from CellProfiler.
+        ds_index (int): index of the dataset. Stored in the csv under the field 'ds_index'.
+        draw_AM (bool): whether drawing the ablation marks colored with their metabolite intensity on top of the cells.
+        coloring_field (str): field from which the intensity will be used to color the cells/ablation marks.
+        clip_percentile (float): percentile value to clip the intensities (hot/cold spot removal). The data are clipped
+            in both direction using that value (ex: a clip_percentile values of 2.5 will result in 95% of the value range)
+        cmap (matplotlib.cm): colormap to use to color the cells.
+        log10 (bool): whether log10 transform the intensities from the csv.
+
+    Returns:
+        color_mask (array): the resulting labeled image in which each pixel from each cells have their corresponding
+            value from the given coloring_field (2D).
+
+    """
+
+    data = pd.read_csv(csv_p)
+
+    cell_mask = tiff.imread(labelled_cells_path)
+    color_mask = np.zeros(cell_mask.shape)
+    sf_intensity_nz = 10**data[data.ds == ds][coloring_field].values
+    sf_intensity_nz = scale(np.clip(sf_intensity_nz, np.percentile(sf_intensity_nz, clip_percentile), np.percentile(sf_intensity_nz, 100-clip_percentile)))
+    for ObjN, int in tqdm.tqdm(zip(data[data.ds == ds].ObjectNumber.values, sf_intensity_nz)):
+        color_mask[cell_mask == ObjN] = int
+    out1 = np.array(cmap(color_mask)*255, dtype=np.uint8)
+    tiff.imsave(save_p + coloring_field + '_cmap.tif', out1[:, :, :-1])
