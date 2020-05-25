@@ -41,10 +41,10 @@ MF
          |   
          |
          └─ postMALDI
-               tile_1.tif
-               tile_2.tif
-                ...
-                out.txt
+              tile_1.tif
+              tile_2.tif
+              ...
+              out.txt
 ```
 
 
@@ -80,7 +80,7 @@ MF
     └─ scAnalysis
     |    MORPHnMOL.csv
     
-   ...
+    ...
 ```
 
 
