@@ -1,0 +1,39 @@
+pandas==1.0.1
+seaborn==0.10.0
+numpy==1.18.1
+matplotlib==3.0.3
+tqdm==4.31.1
+scikit-learn==0.22.1
+scipy==1.4.1
+tifffile==0.15.1
+scikit-image==0.16.2
+scanpy==1.4.5.post1
+anndata==0.7
+pyimzml==1.3.0
+metaspace==1.1
+skan==0.8.0.dev0
+pillow==7.0.0
+hdbscan==0.8.23
+# optunity==1.1.1
+imageio==2.8.0
+# fastdtw==0.3.4
+# dtwalign==0.1.0
+yaml==0.1.7
+pyyaml==5.1
+# torchvision==0.2.1
+# kivy==1.11.1
+# mock==3.0.5
+# jinja2==2.10.1
+# tornado==6.0.3
+setuptools==46.0.0
+# cython==0.29.14
+# sphinx==2.0.1
+# docutils==0.14
+# patsy==0.5.1
+# statsmodels==0.11.1
+# psycopg2==2.8.2
+elasticsearch==5.4.0
+# requests==2.22.0
+# zlib==1.2.11
+boto3==1.9.134
+plotly==3.8.1
