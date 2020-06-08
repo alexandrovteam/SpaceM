@@ -4,7 +4,7 @@ This repository supplements the manuscript [(Rappez et al, 2020)](https://www.bi
 
 For a detailed introduction into the method, presentation of the results of SpaceM investigations of various cells, and discussion of its advantages and capabilities, please read our [manuscript](https://www.biorxiv.org/content/10.1101/510222v1).
 
-Here, we present the source code implementing the method. Moreover, we [present interactively using Google Collab](https://colab.research.google.com/drive/1SPS8qnvUXSxsAC6wRDPgDzImdKi256S5?usp=sharing) the downstream processing of the spatio-molecular matrices provided by SpaceM and replicate all main figures of the manuscript.
+Here, we present the source code implementing the method. Moreover, we [present interactively using Google Collab](https://colab.research.google.com/drive/1CKdHDUkGIpAcBzrSfuCodMF_l2xbVAKT?usp=sharing) the downstream processing of the spatio-molecular matrices provided by SpaceM and replicate all main figures of the manuscript.
 
 
 ### Installation
