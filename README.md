@@ -1,6 +1,6 @@
 # SpaceM -  method for single-cell metabolomics
 
-This repository supplements the manuscript [(Rappez et al, 2020)](https://www.biorxiv.org/content/10.1101/510222v1) which presents SpaceM, a method for in situ single-cell metabolomics of cultured cells that integrates microscopy with MALDI-imaging mass spectrometry. The manuscript is currently being reviewed. The SpaceM datasets presented in the manuscript are available on [MetaboLights](https://www.ebi.ac.uk/metabolights/reviewer417760fcbfbb6076b4ce5bd9a7e7c893).
+This repository supplements the manuscript [(Rappez et al, 2020)](https://www.biorxiv.org/content/10.1101/510222v1) which presents SpaceM, a method for in situ single-cell metabolomics of cultured cells that integrates microscopy with MALDI-imaging mass spectrometry. The manuscript is currently under review. The SpaceM datasets presented in the manuscript are available on [MetaboLights](https://www.ebi.ac.uk/metabolights/reviewer417760fcbfbb6076b4ce5bd9a7e7c893).
 
 For a detailed introduction into the method, presentation of the results of SpaceM investigations of various cells, and discussion of its advantages and capabilities, please read our [manuscript](https://www.biorxiv.org/content/10.1101/510222v1).
 
