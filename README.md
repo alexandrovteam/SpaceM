@@ -9,7 +9,7 @@ Here, we present the source code implementing the method. Moreover, we [present 
 
 ### Installation
 
-We support `python3`. To install the dependencies, run:
+We support `python3`. For the detailed requirements, see the file 'requirements.txt'. To install the dependencies, run:
 
 `pip install -r requirements.txt`
 
@@ -17,6 +17,8 @@ Download and install [CellProfiler 3.0.0](https://cellprofiler.org/previous_rele
 Download and install [Fiji release of December 22 2015](https://imagej.net/Fiji/Downloads)
 
 In `paths.json` add the path of CellProfiler to `"CellProfiler path"` and the path of Fiji to `"Fiji path"`
+
+The installation time is less than one hour.
 
 ### Data requirement
 
