@@ -12,7 +12,7 @@ anndata==0.7
 pyimzml==1.3.0
 metaspace==1.1
 skan==0.8.0.dev0
-pillow==7.0.0
+pillow==8.3.2
 hdbscan==0.8.23
 # optunity==1.1.1
 imageio==2.8.0
