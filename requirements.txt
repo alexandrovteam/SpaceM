@@ -1,6 +1,6 @@
 pandas==1.0.1
 seaborn==0.10.0
-numpy==1.18.1
+numpy==1.22.0
 matplotlib==3.0.3
 tqdm==4.31.1
 scikit-learn==0.22.1
