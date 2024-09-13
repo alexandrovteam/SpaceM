@@ -88,7 +88,7 @@ def annotationSM2CSV(MFA, MFI, fdr, nbin, radius, tf_obj, db='HMDB-v4'):
     # 'moldb_url': 'http://staging.metaspace2020.eu/mol_db/v1',
     # 'jwt': None}
     sm = smau.SMInstance()
-    sm.login(email='luca.rappez@embl.de', password='Zeppar12')
+    
 
     os.chdir(MFI + 'MALDI/')
     ds_name = glob.glob('*.imzML')[0].replace('.imzML', '')
