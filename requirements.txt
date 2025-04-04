@@ -1,24 +1,25 @@
-pandas==1.0.1
+pandas>=1.3
 seaborn==0.10.0
-numpy==1.18.1
-matplotlib==3.0.3
-tqdm==4.31.1
-scikit-learn==0.22.1
-scipy==1.4.1
-tifffile==0.15.1
-scikit-image==0.16.2
-scanpy==1.4.5.post1
-anndata==0.7
+numpy>=1.18.1,<2.0
+matplotlib>=3.5,<4.0
+tqdm>=4.31.1
+scikit-learn>=1.2,<2.0
+scipy>=1.10,<2.0
+tifffile>=2022.8.12
+tifffile
+scanpy>=1.9
+anndata >= 0.7.4
 pyimzml==1.3.0
-metaspace==1.1
-skan==0.8.0.dev0
-pillow==7.0.0
-hdbscan==0.8.23
+metaspace2020
+skan==0.8
+pillow>=9.0
+#hdbscan==0.8.23
+# use the following insted: pip install git+https://github.com/scikit-learn-contrib/hdbscan.git
 # optunity==1.1.1
-imageio==2.8.0
+imageio>=2.27
 # fastdtw==0.3.4
 # dtwalign==0.1.0
-yaml==0.1.7
+PyYAML
 pyyaml==5.1
 # torchvision==0.2.1
 # kivy==1.11.1
